@@ -270,7 +270,7 @@ const ProjectView: React.FC = () => {
         }
       }
       toast.success('Project duplicated!', { id: 'dup' });
-      navigate(`/project/${newProj.id}`);
+      navigate(`/app/project/${newProj.id}`);
     } catch { toast.error('Duplicate failed', { id: 'dup' }); }
   };
 
@@ -304,7 +304,7 @@ const ProjectView: React.FC = () => {
             <div className="text-3xl font-bold text-gray-900">{fmt(withMargin(grandTotal))}</div>
             <div className="text-sm text-gray-500">{showClientPrice && marginPct > 0 ? 'Client Price' : 'Cost Estimate'}</div>
             <div className="flex items-center gap-2">
-              <Link to={`/project/${id}/settings`} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+              <Link to={`/app/project/${id}/settings`} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                 <Settings className="w-4 h-4" />
               </Link>
               <button onClick={duplicateProject} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg" title="Duplicate">

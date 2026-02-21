@@ -76,11 +76,11 @@ const Dashboard: React.FC = () => {
               Reduce estimation time from <strong>1 week to 1 day</strong>.
             </p>
           </div>
-          <Link to="/new" className="flex items-center gap-2 px-5 py-3 bg-white text-angelina-700 rounded-xl font-semibold hover:bg-angelina-50 transition-colors shadow-lg">
+          <Link to="/app/new" className="flex items-center gap-2 px-5 py-3 bg-white text-angelina-700 rounded-xl font-semibold hover:bg-angelina-50 transition-colors shadow-lg">
             <Sparkles className="w-5 h-5" /> New BOQ Project
           </Link>
         </div>
-        <div className="grid grid-cols-4 gap-4 mt-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
           <div className="bg-white/10 backdrop-blur rounded-lg p-3 text-center">
             <div className="text-2xl font-bold">{projects.length}</div>
             <div className="text-xs text-angelina-200">Projects</div>
@@ -101,7 +101,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Dashboard Grid */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Recent Activity */}
         <div className="col-span-2 bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -110,7 +110,7 @@ const Dashboard: React.FC = () => {
           {recentProjects.length > 0 ? (
             <div className="space-y-3">
               {recentProjects.map(p => (
-                <Link key={p.id} to={`/project/${p.id}`} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
+                <Link key={p.id} to={`/app/project/${p.id}`} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3">
                     <Building2 className="w-4 h-4 text-angelina-500" />
                     <div>
@@ -165,7 +165,7 @@ const Dashboard: React.FC = () => {
       {projects.length === 0 && !loading && (
         <div className="mb-8 bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">How It Works</h3>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="text-center">
               <div className="w-12 h-12 bg-angelina-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <FileText className="w-6 h-6 text-angelina-600" />
@@ -189,7 +189,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="mt-6 text-center">
-            <Link to="/new" className="inline-flex items-center gap-2 px-6 py-3 bg-angelina-600 text-white rounded-xl font-semibold hover:bg-angelina-700 transition-colors">
+            <Link to="/app/new" className="inline-flex items-center gap-2 px-6 py-3 bg-angelina-600 text-white rounded-xl font-semibold hover:bg-angelina-700 transition-colors">
               <Plus className="w-5 h-5" /> Create Your First BOQ Project
             </Link>
           </div>
@@ -209,7 +209,7 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(project => (
-              <Link key={project.id} to={`/project/${project.id}`}
+              <Link key={project.id} to={`/app/project/${project.id}`}
                 className="bg-white rounded-xl border border-gray-200 p-5 hover:border-angelina-300 hover:shadow-md transition-all group">
                 <div className="flex items-start justify-between mb-3">
                   <div className="p-2 bg-angelina-50 rounded-lg"><Building2 className="w-5 h-5 text-angelina-600" /></div>

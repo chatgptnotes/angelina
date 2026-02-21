@@ -42,7 +42,7 @@ const ProjectSettings: React.FC = () => {
       const { default: supabase } = await import('../services/supabase');
       await supabase.from('boq_projects').update({ margin_percentage: +form.margin_percentage }).eq('id', id);
       toast.success('Project updated');
-      navigate(`/project/${id}`);
+      navigate(`/app/project/${id}`);
     } catch (e: any) { toast.error('Save failed'); }
     finally { setSaving(false); }
   };
@@ -57,7 +57,7 @@ const ProjectSettings: React.FC = () => {
       await supabase.from('boq_documents').delete().eq('project_id', id);
       await supabase.from('boq_projects').delete().eq('id', id);
       toast.success('Project deleted');
-      navigate('/');
+      navigate('/app');
     } catch { toast.error('Delete failed'); }
   };
 
@@ -65,7 +65,7 @@ const ProjectSettings: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <button onClick={() => navigate(`/project/${id}`)} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
+      <button onClick={() => navigate(`/app/project/${id}`)} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
         <ArrowLeft className="w-4 h-4" /> Back to project
       </button>
       <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-6">

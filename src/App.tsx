@@ -21,6 +21,9 @@ import RatesPage from './pages/RatesPage';
 import ComparePage from './pages/ComparePage';
 import ProjectSettings from './pages/ProjectSettings';
 import SharePage from './pages/SharePage';
+import SmartTemplates from './pages/SmartTemplates';
+import VendorDatabase from './pages/VendorDatabase';
+import MaterialLibrary from './pages/MaterialLibrary';
 
 // Settings pages
 import ProfilePage from './pages/settings/ProfilePage';
@@ -52,6 +55,9 @@ const App: React.FC = () => {
             <Route path="/app/new" element={<NewProject />} />
             <Route path="/app/rates" element={<RatesPage />} />
             <Route path="/app/compare" element={<ComparePage />} />
+            <Route path="/app/templates" element={<SmartTemplates />} />
+            <Route path="/app/vendors" element={<VendorDatabase />} />
+            <Route path="/app/materials" element={<MaterialLibrary />} />
             <Route path="/app/profile" element={<ProfilePage />} />
             <Route path="/app/team" element={<TeamPage />} />
             <Route path="/app/billing" element={<BillingPage />} />

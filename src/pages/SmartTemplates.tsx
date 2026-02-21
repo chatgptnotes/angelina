@@ -158,7 +158,7 @@ const SmartTemplates: React.FC = () => {
         })));
       }
       toast.success('Template applied!');
-      navigate(`/project/${project.id}`);
+      navigate(`/app/project/${project.id}`);
     } catch (e: any) {
       toast.error('Failed: ' + (e.message || 'Unknown'));
     } finally { setCreating(false); }

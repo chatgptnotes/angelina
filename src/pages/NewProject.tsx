@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Sparkles, Building2, Upload, ArrowRight } from 'lucide-react';
+import { Sparkles, Building2, Upload, ArrowRight, ArrowLeft } from 'lucide-react';
 import { BOQService } from '../services/boqService';
 
 const NewProject: React.FC = () => {
@@ -36,7 +36,7 @@ const NewProject: React.FC = () => {
         currency: 'INR',
       });
       toast.success('Project created!');
-      navigate(`/project/${project.id}`);
+      navigate(`/app/project/${project.id}`);
     } catch (error: any) {
       console.error('Create error:', error);
       toast.error('Failed to create project: ' + (error.message || 'Unknown error'));
@@ -49,6 +49,9 @@ const NewProject: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
+      <Link to="/app" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
+        <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+      </Link>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">New BOQ Project</h2>
         <p className="text-gray-500 mt-1">Enter project details, then upload design documents for AI extraction</p>
