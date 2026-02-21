@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Upload, Sparkles, Download, FileText, Trash2, Plus,
-  ChevronDown, ChevronUp, DollarSign, BarChart3, Eye,
-  Edit3, Save, Check, X
+  ChevronDown, ChevronUp, DollarSign, Settings, Copy,
+  Share2, Eye, EyeOff, Edit3, Save, X, RefreshCw
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { BOQService } from '../services/boqService';
 import { AIExtractor } from '../services/aiExtractor';
+import { ExportService } from '../services/exportService';
+import supabase from '../services/supabase';
 import type { BOQProject, BOQRoom, BOQItem, BOQDocument, BOQCategory } from '../types/boq';
 
 const CATEGORIES: { value: BOQCategory; label: string; color: string }[] = [
@@ -26,6 +28,9 @@ const CATEGORIES: { value: BOQCategory; label: string; color: string }[] = [
   { value: 'miscellaneous', label: 'Misc', color: '#6B7280' },
 ];
 
+const UNITS = ['sqft','sqm','rft','nos','set','lot','kg','ltr','cum','bag'] as const;
+const ROOM_TYPES = ['bedroom','living','kitchen','bathroom','dining','office','balcony','corridor','other'] as const;
+
 const ProjectView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -38,35 +43,41 @@ const ProjectView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'boq' | 'documents' | 'summary'>('boq');
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
   const [totals, setTotals] = useState<any>(null);
+  // Item editing
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editItemData, setEditItemData] = useState<Partial<BOQItem>>({});
+  const [addingItemRoom, setAddingItemRoom] = useState<string | null>(null);
+  const [newItem, setNewItem] = useState<Partial<BOQItem>>({ category: 'miscellaneous', description: '', unit: 'nos', quantity: 1, rate: 0, specification: '' });
+  // Room editing
+  const [editingRoom, setEditingRoom] = useState<string | null>(null);
+  const [editRoomData, setEditRoomData] = useState<Partial<BOQRoom>>({});
+  const [addingRoom, setAddingRoom] = useState(false);
+  const [newRoom, setNewRoom] = useState({ name: '', type: 'other' as string, area_sqft: '' });
+  // Margin
+  const [marginPct, setMarginPct] = useState(0);
+  const [showClientPrice, setShowClientPrice] = useState(false);
 
-  useEffect(() => {
-    if (id) loadProjectData();
-  }, [id]);
+  useEffect(() => { if (id) loadProjectData(); }, [id]);
 
   const loadProjectData = async () => {
     if (!id) return;
     try {
       const [proj, rms, itms, docs] = await Promise.all([
-        BOQService.getProject(id),
-        BOQService.getRooms(id),
-        BOQService.getItems(id),
-        BOQService.getDocuments(id),
+        BOQService.getProject(id), BOQService.getRooms(id),
+        BOQService.getItems(id), BOQService.getDocuments(id),
       ]);
       setProject(proj);
       setRooms(rms);
       setItems(itms);
       setDocuments(docs);
-      // Expand all rooms by default
       setExpandedRooms(new Set(rms.map(r => r.id)));
-      // Load totals
       const t = await BOQService.getProjectTotals(id);
       setTotals(t);
+      // Load margin
+      if (proj) setMarginPct((proj as any).margin_percentage || 0);
     } catch (error) {
-      console.error('Load error:', error);
       toast.error('Failed to load project data');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   // Document upload
@@ -78,18 +89,12 @@ const ProjectView: React.FC = () => {
         const doc = await BOQService.uploadDocument(id, file, fileType as any);
         setDocuments(prev => [doc, ...prev]);
         toast.success(`Uploaded: ${file.name}`);
-      } catch (error: any) {
-        toast.error(`Upload failed: ${file.name}`);
-      }
+      } catch { toast.error(`Upload failed: ${file.name}`); }
     }
   }, [id]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'image/*': ['.jpg', '.jpeg', '.png', '.webp'],
-    },
+    onDrop, accept: { 'application/pdf': ['.pdf'], 'image/*': ['.jpg', '.jpeg', '.png', '.webp'] },
   });
 
   // AI Extraction
@@ -97,115 +102,187 @@ const ProjectView: React.FC = () => {
     if (!id || !project) return;
     setExtracting(true);
     try {
-      toast.loading('AI is analyzing the document...', { id: 'extracting' });
-      
-      const result = await AIExtractor.extractFromDocument(
-        doc.file_url,
-        doc.file_type,
-        {
-          style: project.style,
-          total_area: project.total_area_sqft,
-          num_rooms: project.num_rooms,
-        }
-      );
-
-      // Create rooms and items from extraction
+      toast.loading('AI is analyzing...', { id: 'extracting' });
+      const result = await AIExtractor.extractFromDocument(doc.file_url, doc.file_type, {
+        style: project.style, total_area: project.total_area_sqft, num_rooms: project.num_rooms,
+      });
       for (const roomData of result.rooms) {
-        const room = await BOQService.createRoom({
-          project_id: id,
-          name: roomData.name,
-          type: roomData.type as any,
-          area_sqft: roomData.area_sqft,
-          order: rooms.length + 1,
-        });
-
-        const itemsToCreate = roomData.items.map((item, idx) => ({
-          project_id: id,
-          room_id: room.id,
-          category: item.category,
-          description: item.description,
-          specification: item.specification,
-          unit: item.unit as any,
-          quantity: item.quantity,
-          rate: item.rate,
-          source: 'ai_extracted' as const,
-          confidence: item.confidence,
-          order: idx + 1,
-        }));
-
-        await BOQService.bulkCreateItems(itemsToCreate);
+        const room = await BOQService.createRoom({ project_id: id, name: roomData.name, type: roomData.type as any, area_sqft: roomData.area_sqft, order: rooms.length + 1 });
+        await BOQService.bulkCreateItems(roomData.items.map((item, idx) => ({
+          project_id: id, room_id: room.id, category: item.category, description: item.description,
+          specification: item.specification, unit: item.unit as any, quantity: item.quantity,
+          rate: item.rate, source: 'ai_extracted' as const, confidence: item.confidence, order: idx + 1,
+        })));
       }
-
-      toast.success(`Extracted ${result.rooms.length} rooms with BOQ items!`, { id: 'extracting' });
-      loadProjectData(); // Refresh
+      toast.success(`Extracted ${result.rooms.length} rooms!`, { id: 'extracting' });
+      loadProjectData();
     } catch (error: any) {
-      console.error('Extraction error:', error);
-      toast.error('Extraction failed: ' + (error.message || 'Unknown error'), { id: 'extracting' });
-    } finally {
-      setExtracting(false);
-    }
+      toast.error('Extraction failed: ' + (error.message || 'Unknown'), { id: 'extracting' });
+    } finally { setExtracting(false); }
   };
 
-  // Demo extraction (no document needed)
   const handleDemoExtract = async () => {
     if (!id || !project) return;
     setExtracting(true);
     try {
-      toast.loading('Running demo extraction...', { id: 'demo' });
+      toast.loading('Generating demo...', { id: 'demo' });
       const result = AIExtractor.getDemoExtraction({ style: project.style });
-
       for (const roomData of result.rooms) {
-        const room = await BOQService.createRoom({
-          project_id: id,
-          name: roomData.name,
-          type: roomData.type as any,
-          area_sqft: roomData.area_sqft,
-          order: rooms.length + 1,
-        });
-
-        const itemsToCreate = roomData.items.map((item, idx) => ({
-          project_id: id,
-          room_id: room.id,
-          category: item.category,
-          description: item.description,
-          specification: item.specification,
-          unit: item.unit as any,
-          quantity: item.quantity,
-          rate: item.rate,
-          source: 'ai_extracted' as const,
-          confidence: item.confidence,
-          order: idx + 1,
-        }));
-
-        await BOQService.bulkCreateItems(itemsToCreate);
+        const room = await BOQService.createRoom({ project_id: id, name: roomData.name, type: roomData.type as any, area_sqft: roomData.area_sqft, order: rooms.length + 1 });
+        await BOQService.bulkCreateItems(roomData.items.map((item, idx) => ({
+          project_id: id, room_id: room.id, category: item.category, description: item.description,
+          specification: item.specification, unit: item.unit as any, quantity: item.quantity,
+          rate: item.rate, source: 'ai_extracted' as const, confidence: item.confidence, order: idx + 1,
+        })));
       }
-
       toast.success('Demo BOQ generated!', { id: 'demo' });
       loadProjectData();
-    } catch (error: any) {
-      toast.error('Demo failed: ' + error.message, { id: 'demo' });
-    } finally {
-      setExtracting(false);
-    }
+    } catch (error: any) { toast.error('Demo failed', { id: 'demo' }); }
+    finally { setExtracting(false); }
   };
 
-  // Format currency
+  // AI re-analyze for a single room
+  const handleReanalyzeRoom = async (room: BOQRoom) => {
+    if (!id || !project) return;
+    const roomDocs = documents.filter(d => d.processing_status === 'completed' || documents.length > 0);
+    if (documents.length === 0) { toast.error('No documents to analyze'); return; }
+    setExtracting(true);
+    try {
+      toast.loading(`Re-analyzing ${room.name}...`, { id: 'reanalyze' });
+      // Delete existing items for this room
+      const roomItems = items.filter(i => i.room_id === room.id);
+      for (const item of roomItems) await BOQService.deleteItem(item.id);
+      // Re-extract using first document
+      const doc = documents[0];
+      const result = await AIExtractor.extractFromDocument(doc.file_url, doc.file_type, {
+        style: project.style, total_area: room.area_sqft, num_rooms: 1,
+      });
+      if (result.rooms.length > 0) {
+        const roomData = result.rooms[0];
+        await BOQService.bulkCreateItems(roomData.items.map((item, idx) => ({
+          project_id: id, room_id: room.id, category: item.category, description: item.description,
+          specification: item.specification, unit: item.unit as any, quantity: item.quantity,
+          rate: item.rate, source: 'ai_extracted' as const, confidence: item.confidence, order: idx + 1,
+        })));
+      }
+      toast.success(`${room.name} re-analyzed!`, { id: 'reanalyze' });
+      loadProjectData();
+    } catch (e: any) { toast.error('Re-analysis failed', { id: 'reanalyze' }); }
+    finally { setExtracting(false); }
+  };
+
+  // Item CRUD
+  const startEditItem = (item: BOQItem) => { setEditingItem(item.id); setEditItemData({ ...item }); };
+  const saveEditItem = async () => {
+    if (!editingItem) return;
+    try {
+      await BOQService.updateItem(editingItem, {
+        description: editItemData.description, specification: editItemData.specification,
+        quantity: editItemData.quantity, rate: editItemData.rate, category: editItemData.category,
+        unit: editItemData.unit,
+      });
+      toast.success('Item updated');
+      setEditingItem(null);
+      loadProjectData();
+    } catch { toast.error('Update failed'); }
+  };
+
+  const deleteItem = async (itemId: string) => {
+    if (!confirm('Delete this item?')) return;
+    try { await BOQService.deleteItem(itemId); toast.success('Item deleted'); loadProjectData(); }
+    catch { toast.error('Delete failed'); }
+  };
+
+  const addItem = async () => {
+    if (!addingItemRoom || !id || !newItem.description) { toast.error('Description required'); return; }
+    try {
+      await BOQService.createItem({
+        project_id: id, room_id: addingItemRoom, ...newItem,
+        source: 'manual', order: items.filter(i => i.room_id === addingItemRoom).length + 1,
+      });
+      toast.success('Item added');
+      setAddingItemRoom(null);
+      setNewItem({ category: 'miscellaneous', description: '', unit: 'nos', quantity: 1, rate: 0, specification: '' });
+      loadProjectData();
+    } catch { toast.error('Add failed'); }
+  };
+
+  // Room CRUD
+  const startEditRoom = (room: BOQRoom) => { setEditingRoom(room.id); setEditRoomData({ ...room }); };
+  const saveEditRoom = async () => {
+    if (!editingRoom) return;
+    try {
+      await BOQService.updateRoom(editingRoom, { name: editRoomData.name, type: editRoomData.type, area_sqft: editRoomData.area_sqft });
+      toast.success('Room updated');
+      setEditingRoom(null);
+      loadProjectData();
+    } catch { toast.error('Update failed'); }
+  };
+
+  const deleteRoom = async (roomId: string) => {
+    if (!confirm('Delete this room and all its items?')) return;
+    try {
+      // Delete items first
+      const roomItems = items.filter(i => i.room_id === roomId);
+      for (const item of roomItems) await BOQService.deleteItem(item.id);
+      await BOQService.deleteRoom(roomId);
+      toast.success('Room deleted');
+      loadProjectData();
+    } catch { toast.error('Delete failed'); }
+  };
+
+  const addRoom = async () => {
+    if (!id || !newRoom.name) { toast.error('Room name required'); return; }
+    try {
+      await BOQService.createRoom({
+        project_id: id, name: newRoom.name, type: newRoom.type as any,
+        area_sqft: newRoom.area_sqft ? +newRoom.area_sqft : undefined, order: rooms.length + 1,
+      });
+      toast.success('Room added');
+      setAddingRoom(false);
+      setNewRoom({ name: '', type: 'other', area_sqft: '' });
+      loadProjectData();
+    } catch { toast.error('Add failed'); }
+  };
+
+  // Duplicate project
+  const duplicateProject = async () => {
+    if (!id || !project) return;
+    try {
+      toast.loading('Duplicating...', { id: 'dup' });
+      const newProj = await BOQService.createProject({
+        name: project.name + ' (Copy)', client: project.client, location: project.location,
+        style: project.style, total_area_sqft: project.total_area_sqft, num_rooms: project.num_rooms,
+        status: 'draft', currency: project.currency,
+      });
+      for (const room of rooms) {
+        const newRoom = await BOQService.createRoom({
+          project_id: newProj.id, name: room.name, type: room.type,
+          area_sqft: room.area_sqft, order: room.order,
+        });
+        const roomItems = items.filter(i => i.room_id === room.id);
+        if (roomItems.length > 0) {
+          await BOQService.bulkCreateItems(roomItems.map(item => ({
+            project_id: newProj.id, room_id: newRoom.id, category: item.category,
+            description: item.description, specification: item.specification, unit: item.unit,
+            quantity: item.quantity, rate: item.rate, source: 'manual' as const, order: item.order,
+          })));
+        }
+      }
+      toast.success('Project duplicated!', { id: 'dup' });
+      navigate(`/project/${newProj.id}`);
+    } catch { toast.error('Duplicate failed', { id: 'dup' }); }
+  };
+
+  // Format
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+  const withMargin = (n: number) => showClientPrice && marginPct > 0 ? n * (1 + marginPct / 100) : n;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin w-8 h-8 border-4 border-angelina-200 border-t-angelina-600 rounded-full" />
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-angelina-200 border-t-angelina-600 rounded-full" /></div>;
+  if (!project) return <div className="text-center py-20 text-gray-500">Project not found</div>;
 
-  if (!project) {
-    return <div className="text-center py-20 text-gray-500">Project not found</div>;
-  }
-
-  const roomItems = (roomId: string) => items.filter(i => i.room_id === roomId);
-  const roomTotal = (roomId: string) => roomItems(roomId).reduce((s, i) => s + (i.amount || 0), 0);
+  const roomItemsFn = (roomId: string) => items.filter(i => i.room_id === roomId);
+  const roomTotal = (roomId: string) => roomItemsFn(roomId).reduce((s, i) => s + (i.amount || 0), 0);
   const grandTotal = items.reduce((s, i) => s + (i.amount || 0), 0);
 
   return (
@@ -216,16 +293,35 @@ const ProjectView: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{project.name}</h2>
             <p className="text-gray-500">{project.client} {project.location && `• ${project.location}`}</p>
-            <div className="flex items-center gap-4 mt-3 text-sm">
+            <div className="flex items-center gap-3 mt-3 text-sm flex-wrap">
               {project.style && <span className="px-2 py-1 bg-angelina-50 text-angelina-700 rounded-md">{project.style}</span>}
               {project.total_area_sqft && <span className="text-gray-500">{project.total_area_sqft} sqft</span>}
               <span className="text-gray-500">{rooms.length} rooms</span>
               <span className="text-gray-500">{items.length} items</span>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-3xl font-bold text-gray-900">{fmt(grandTotal)}</div>
-            <div className="text-sm text-gray-500">Total Estimate</div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="text-3xl font-bold text-gray-900">{fmt(withMargin(grandTotal))}</div>
+            <div className="text-sm text-gray-500">{showClientPrice && marginPct > 0 ? 'Client Price' : 'Cost Estimate'}</div>
+            <div className="flex items-center gap-2">
+              <Link to={`/project/${id}/settings`} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                <Settings className="w-4 h-4" />
+              </Link>
+              <button onClick={duplicateProject} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg" title="Duplicate">
+                <Copy className="w-4 h-4" />
+              </button>
+              <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/share/${id}`); toast.success('Share link copied!'); }}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg" title="Copy share link">
+                <Share2 className="w-4 h-4" />
+              </button>
+              {marginPct > 0 && (
+                <button onClick={() => setShowClientPrice(!showClientPrice)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${showClientPrice ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {showClientPrice ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                  {showClientPrice ? 'Client View' : 'Cost View'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -233,13 +329,10 @@ const ProjectView: React.FC = () => {
       {/* Tabs */}
       <div className="flex items-center gap-1 mb-6 bg-white rounded-lg border border-gray-200 p-1">
         {(['boq', 'documents', 'summary'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
+          <button key={tab} onClick={() => setActiveTab(tab)}
             className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-colors capitalize ${
               activeTab === tab ? 'bg-angelina-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
+            }`}>
             {tab === 'boq' ? 'Bill of Quantities' : tab}
           </button>
         ))}
@@ -254,47 +347,98 @@ const ProjectView: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No BOQ items yet</h3>
               <p className="text-gray-500 mb-4">Upload design documents for AI extraction, or generate a demo BOQ</p>
               <div className="flex items-center justify-center gap-3">
-                <button
-                  onClick={handleDemoExtract}
-                  disabled={extracting}
-                  className="px-5 py-2.5 bg-angelina-600 text-white rounded-lg font-medium hover:bg-angelina-700 disabled:opacity-50"
-                >
+                <button onClick={handleDemoExtract} disabled={extracting}
+                  className="px-5 py-2.5 bg-angelina-600 text-white rounded-lg font-medium hover:bg-angelina-700 disabled:opacity-50">
                   {extracting ? 'Generating...' : '✨ Generate Demo BOQ'}
                 </button>
               </div>
             </div>
           )}
 
+          {/* Add Room button */}
+          {!addingRoom && (
+            <button onClick={() => setAddingRoom(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-angelina-600 hover:bg-angelina-50 rounded-lg border border-dashed border-angelina-300">
+              <Plus className="w-4 h-4" /> Add Room
+            </button>
+          )}
+
+          {addingRoom && (
+            <div className="bg-angelina-50 border border-angelina-200 rounded-xl p-4">
+              <h4 className="font-semibold text-sm mb-2">Add New Room</h4>
+              <div className="flex items-center gap-3">
+                <input value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})}
+                  placeholder="Room name" className="flex-1 px-3 py-2 border rounded-lg text-sm" />
+                <select value={newRoom.type} onChange={e => setNewRoom({...newRoom, type: e.target.value})}
+                  className="px-3 py-2 border rounded-lg text-sm">
+                  {ROOM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <input type="number" value={newRoom.area_sqft} onChange={e => setNewRoom({...newRoom, area_sqft: e.target.value})}
+                  placeholder="Area sqft" className="w-28 px-3 py-2 border rounded-lg text-sm" />
+                <button onClick={addRoom} className="px-4 py-2 bg-angelina-600 text-white rounded-lg text-sm font-medium hover:bg-angelina-700">Add</button>
+                <button onClick={() => setAddingRoom(false)} className="px-3 py-2 text-gray-500 hover:text-gray-700"><X className="w-4 h-4" /></button>
+              </div>
+            </div>
+          )}
+
           {rooms.map(room => {
-            const rItems = roomItems(room.id);
+            const rItems = roomItemsFn(room.id);
             const rTotal = roomTotal(room.id);
             const isExpanded = expandedRooms.has(room.id);
 
             return (
               <div key={room.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 {/* Room Header */}
-                <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => {
+                <div className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => {
                     const next = new Set(expandedRooms);
                     isExpanded ? next.delete(room.id) : next.add(room.id);
                     setExpandedRooms(next);
-                  }}
-                >
-                  <div className="flex items-center gap-3">
+                  }}>
                     <div className="w-10 h-10 bg-angelina-100 rounded-lg flex items-center justify-center">
                       <FileText className="w-5 h-5 text-angelina-600" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{room.name}</h3>
-                      <p className="text-xs text-gray-500">
-                        {rItems.length} items {room.area_sqft && `• ${room.area_sqft} sqft`}
-                      </p>
-                    </div>
+                    {editingRoom === room.id ? (
+                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        <input value={editRoomData.name || ''} onChange={e => setEditRoomData({...editRoomData, name: e.target.value})}
+                          className="px-2 py-1 border rounded text-sm font-semibold" />
+                        <select value={editRoomData.type || ''} onChange={e => setEditRoomData({...editRoomData, type: e.target.value as any})}
+                          className="px-2 py-1 border rounded text-xs">
+                          {ROOM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <input type="number" value={editRoomData.area_sqft || ''} onChange={e => setEditRoomData({...editRoomData, area_sqft: +e.target.value})}
+                          placeholder="sqft" className="w-20 px-2 py-1 border rounded text-xs" />
+                        <button onClick={saveEditRoom} className="text-green-600"><Save className="w-4 h-4" /></button>
+                        <button onClick={() => setEditingRoom(null)} className="text-gray-400"><X className="w-4 h-4" /></button>
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{room.name}</h3>
+                        <p className="text-xs text-gray-500">{rItems.length} items {room.area_sqft && `• ${room.area_sqft} sqft`}</p>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-lg font-semibold text-gray-900">{fmt(rTotal)}</span>
-                    {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-semibold text-gray-900">{fmt(withMargin(rTotal))}</span>
+                    {editingRoom !== room.id && (
+                      <div className="flex items-center gap-1">
+                        <button onClick={(e) => { e.stopPropagation(); handleReanalyzeRoom(room); }} disabled={extracting}
+                          className="p-1.5 text-angelina-500 hover:bg-angelina-50 rounded" title="AI Re-analyze">
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); startEditRoom(room); }}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 rounded" title="Edit room">
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); deleteRoom(room.id); }}
+                          className="p-1.5 text-red-400 hover:text-red-600 rounded" title="Delete room">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <button onClick={() => { const next = new Set(expandedRooms); isExpanded ? next.delete(room.id) : next.add(room.id); setExpandedRooms(next); }}>
+                      {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                    </button>
                   </div>
                 </div>
 
@@ -310,34 +454,67 @@ const ProjectView: React.FC = () => {
                           <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 w-20">Qty</th>
                           <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 w-24">Rate</th>
                           <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 w-28">Amount</th>
+                          {showClientPrice && marginPct > 0 && <th className="px-4 py-2 text-right text-xs font-medium text-green-600 w-28">Client Price</th>}
+                          <th className="px-4 py-2 w-16"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {rItems.map(item => {
                           const cat = CATEGORIES.find(c => c.value === item.category);
+                          if (editingItem === item.id) {
+                            return (
+                              <tr key={item.id} className="bg-angelina-50">
+                                <td className="px-4 py-2">
+                                  <select value={editItemData.category || ''} onChange={e => setEditItemData({...editItemData, category: e.target.value as any})}
+                                    className="w-full px-1 py-1 border rounded text-xs">
+                                    {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                  </select>
+                                </td>
+                                <td className="px-4 py-2">
+                                  <input value={editItemData.description || ''} onChange={e => setEditItemData({...editItemData, description: e.target.value})}
+                                    className="w-full px-2 py-1 border rounded text-sm mb-1" />
+                                  <input value={editItemData.specification || ''} onChange={e => setEditItemData({...editItemData, specification: e.target.value})}
+                                    placeholder="Specification" className="w-full px-2 py-1 border rounded text-xs text-gray-500" />
+                                </td>
+                                <td className="px-4 py-2">
+                                  <select value={editItemData.unit || ''} onChange={e => setEditItemData({...editItemData, unit: e.target.value as any})}
+                                    className="w-full px-1 py-1 border rounded text-xs">
+                                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                  </select>
+                                </td>
+                                <td className="px-4 py-2"><input type="number" value={editItemData.quantity || ''} onChange={e => setEditItemData({...editItemData, quantity: +e.target.value})}
+                                  className="w-full px-2 py-1 border rounded text-xs text-right" /></td>
+                                <td className="px-4 py-2"><input type="number" value={editItemData.rate || ''} onChange={e => setEditItemData({...editItemData, rate: +e.target.value})}
+                                  className="w-full px-2 py-1 border rounded text-xs text-right" /></td>
+                                <td className="px-4 py-2 text-right text-xs text-gray-500">{fmt((editItemData.quantity || 0) * (editItemData.rate || 0))}</td>
+                                {showClientPrice && marginPct > 0 && <td></td>}
+                                <td className="px-4 py-2">
+                                  <button onClick={saveEditItem} className="text-green-600 mr-1"><Save className="w-3.5 h-3.5 inline" /></button>
+                                  <button onClick={() => setEditingItem(null)} className="text-gray-400"><X className="w-3.5 h-3.5 inline" /></button>
+                                </td>
+                              </tr>
+                            );
+                          }
                           return (
-                            <tr key={item.id} className="hover:bg-gray-50">
+                            <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => startEditItem(item)}>
                               <td className="px-4 py-2">
-                                <span
-                                  className="text-xs px-2 py-0.5 rounded-full font-medium"
-                                  style={{ backgroundColor: cat?.color + '20', color: cat?.color }}
-                                >
+                                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: cat?.color + '20', color: cat?.color }}>
                                   {cat?.label}
                                 </span>
                               </td>
                               <td className="px-4 py-2">
                                 <div className="font-medium text-gray-900">{item.description}</div>
-                                {item.specification && (
-                                  <div className="text-xs text-gray-400 mt-0.5">{item.specification}</div>
-                                )}
-                                {item.source === 'ai_extracted' && item.confidence && (
-                                  <div className="text-xs text-angelina-500 mt-0.5">AI • {item.confidence}% confidence</div>
-                                )}
+                                {item.specification && <div className="text-xs text-gray-400 mt-0.5">{item.specification}</div>}
+                                {item.source === 'ai_extracted' && item.confidence && <div className="text-xs text-angelina-500 mt-0.5">AI • {item.confidence}%</div>}
                               </td>
                               <td className="px-4 py-2 text-gray-500">{item.unit}</td>
                               <td className="px-4 py-2 text-right text-gray-900">{item.quantity}</td>
                               <td className="px-4 py-2 text-right text-gray-900">{fmt(item.rate)}</td>
                               <td className="px-4 py-2 text-right font-medium text-gray-900">{fmt(item.amount)}</td>
+                              {showClientPrice && marginPct > 0 && <td className="px-4 py-2 text-right font-medium text-green-700">{fmt(item.amount * (1 + marginPct / 100))}</td>}
+                              <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
+                                <button onClick={() => deleteItem(item.id)} className="text-red-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                              </td>
                             </tr>
                           );
                         })}
@@ -346,9 +523,44 @@ const ProjectView: React.FC = () => {
                         <tr className="bg-gray-50 font-semibold">
                           <td colSpan={5} className="px-4 py-2 text-right text-gray-700">Room Total</td>
                           <td className="px-4 py-2 text-right text-gray-900">{fmt(rTotal)}</td>
+                          {showClientPrice && marginPct > 0 && <td className="px-4 py-2 text-right text-green-700">{fmt(rTotal * (1 + marginPct / 100))}</td>}
+                          <td></td>
                         </tr>
                       </tfoot>
                     </table>
+                  </div>
+                )}
+
+                {/* Add Item */}
+                {isExpanded && (
+                  <div className="border-t border-gray-100 p-3">
+                    {addingItemRoom === room.id ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <select value={newItem.category || ''} onChange={e => setNewItem({...newItem, category: e.target.value as any})}
+                          className="px-2 py-1 border rounded text-xs">
+                          {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                        <input value={newItem.description || ''} onChange={e => setNewItem({...newItem, description: e.target.value})}
+                          placeholder="Description" className="flex-1 min-w-[150px] px-2 py-1 border rounded text-xs" />
+                        <input value={newItem.specification || ''} onChange={e => setNewItem({...newItem, specification: e.target.value})}
+                          placeholder="Spec" className="w-32 px-2 py-1 border rounded text-xs" />
+                        <select value={newItem.unit || ''} onChange={e => setNewItem({...newItem, unit: e.target.value as any})}
+                          className="px-2 py-1 border rounded text-xs">
+                          {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                        <input type="number" value={newItem.quantity || ''} onChange={e => setNewItem({...newItem, quantity: +e.target.value})}
+                          placeholder="Qty" className="w-16 px-2 py-1 border rounded text-xs" />
+                        <input type="number" value={newItem.rate || ''} onChange={e => setNewItem({...newItem, rate: +e.target.value})}
+                          placeholder="Rate" className="w-20 px-2 py-1 border rounded text-xs" />
+                        <button onClick={addItem} className="px-3 py-1 bg-angelina-600 text-white rounded text-xs font-medium">Add</button>
+                        <button onClick={() => setAddingItemRoom(null)} className="text-gray-400"><X className="w-4 h-4" /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setAddingItemRoom(room.id)}
+                        className="flex items-center gap-1 text-xs text-angelina-600 hover:text-angelina-700 font-medium">
+                        <Plus className="w-3.5 h-3.5" /> Add Item
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -359,13 +571,23 @@ const ProjectView: React.FC = () => {
           {items.length > 0 && (
             <div className="bg-gradient-to-r from-angelina-600 to-purple-600 rounded-xl p-5 text-white flex items-center justify-between">
               <div>
-                <div className="text-sm text-angelina-200">Grand Total ({items.length} items across {rooms.length} rooms)</div>
-                <div className="text-3xl font-bold mt-1">{fmt(grandTotal)}</div>
+                <div className="text-sm text-angelina-200">
+                  {showClientPrice && marginPct > 0 ? `Client Total (${marginPct}% margin)` : `Grand Total`}
+                  {' '}({items.length} items across {rooms.length} rooms)
+                </div>
+                <div className="text-3xl font-bold mt-1">{fmt(withMargin(grandTotal))}</div>
+                {showClientPrice && marginPct > 0 && <div className="text-sm text-angelina-200 mt-1">Cost: {fmt(grandTotal)}</div>}
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 bg-white text-angelina-700 rounded-lg font-medium hover:bg-angelina-50">
-                <Download className="w-4 h-4" />
-                Export Excel
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => ExportService.exportExcel(project, rooms, items)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-angelina-700 rounded-lg font-medium hover:bg-angelina-50">
+                  <Download className="w-4 h-4" /> Excel
+                </button>
+                <button onClick={() => ExportService.exportPDF(project, rooms, items, showClientPrice ? marginPct : 0)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg font-medium hover:bg-white/30 border border-white/30">
+                  <FileText className="w-4 h-4" /> PDF
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -374,41 +596,28 @@ const ProjectView: React.FC = () => {
       {/* Documents Tab */}
       {activeTab === 'documents' && (
         <div className="space-y-4">
-          <div
-            {...getRootProps()}
+          <div {...getRootProps()}
             className={`bg-white rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
               isDragActive ? 'border-angelina-500 bg-angelina-50' : 'border-gray-300 hover:border-angelina-400'
-            }`}
-          >
+            }`}>
             <input {...getInputProps()} />
             <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-            <p className="font-medium text-gray-700">
-              {isDragActive ? 'Drop files here...' : 'Drag & drop design documents, or click to browse'}
-            </p>
+            <p className="font-medium text-gray-700">{isDragActive ? 'Drop files here...' : 'Drag & drop design documents, or click to browse'}</p>
             <p className="text-sm text-gray-400 mt-1">PDF floor plans, 3D renders (JPG/PNG), material sheets</p>
           </div>
-
           {documents.map(doc => (
             <div key={doc.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FileText className="w-8 h-8 text-gray-400" />
                 <div>
                   <div className="font-medium text-gray-900">{doc.filename}</div>
-                  <div className="text-xs text-gray-500">
-                    {doc.file_type} • {(doc.file_size / 1024).toFixed(0)} KB
-                  </div>
+                  <div className="text-xs text-gray-500">{doc.file_type} • {(doc.file_size / 1024).toFixed(0)} KB</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleExtract(doc)}
-                  disabled={extracting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-angelina-600 text-white rounded-lg text-sm font-medium hover:bg-angelina-700 disabled:opacity-50"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {extracting ? 'Extracting...' : 'Extract BOQ'}
-                </button>
-              </div>
+              <button onClick={() => handleExtract(doc)} disabled={extracting}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-angelina-600 text-white rounded-lg text-sm font-medium hover:bg-angelina-700 disabled:opacity-50">
+                <Sparkles className="w-3.5 h-3.5" /> {extracting ? 'Extracting...' : 'Extract BOQ'}
+              </button>
             </div>
           ))}
         </div>
@@ -441,7 +650,6 @@ const ProjectView: React.FC = () => {
               })}
             </div>
           </div>
-
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-900 mb-4">By Room</h3>
             <div className="space-y-2">
@@ -461,12 +669,11 @@ const ProjectView: React.FC = () => {
               })}
             </div>
           </div>
-
           <div className="col-span-2 bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-900 mb-2">Extraction Stats</h3>
             <div className="flex items-center gap-8 text-sm">
-              <div><span className="text-gray-500">AI-extracted items:</span> <strong>{totals.aiExtracted}</strong></div>
-              <div><span className="text-gray-500">Manual items:</span> <strong>{totals.manualItems}</strong></div>
+              <div><span className="text-gray-500">AI-extracted:</span> <strong>{totals.aiExtracted}</strong></div>
+              <div><span className="text-gray-500">Manual:</span> <strong>{totals.manualItems}</strong></div>
               <div><span className="text-gray-500">Total items:</span> <strong>{totals.totalItems}</strong></div>
               <div><span className="text-gray-500">Rooms:</span> <strong>{totals.totalRooms}</strong></div>
             </div>

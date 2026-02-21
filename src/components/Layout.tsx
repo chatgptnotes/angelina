@@ -1,13 +1,21 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Home, Plus, FileText, Sparkles } from 'lucide-react';
+import { Home, Plus, Database, BarChart3, Sparkles } from 'lucide-react';
 
 const Layout: React.FC = () => {
   const location = useLocation();
+  const isActive = (path: string) => location.pathname === path;
+
+  const navLink = (to: string, label: string, icon: React.ReactNode) => (
+    <Link to={to} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+      isActive(to) ? 'bg-angelina-50 text-angelina-700' : 'text-gray-600 hover:bg-gray-100'
+    }`}>
+      {icon}{label}
+    </Link>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -21,31 +29,18 @@ const Layout: React.FC = () => {
               </div>
             </Link>
 
-            <nav className="flex items-center gap-2">
-              <Link
-                to="/"
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  location.pathname === '/'
-                    ? 'bg-angelina-50 text-angelina-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <Home className="w-4 h-4" />
-                Dashboard
-              </Link>
-              <Link
-                to="/new"
-                className="flex items-center gap-2 px-4 py-2 bg-angelina-600 text-white rounded-lg text-sm font-medium hover:bg-angelina-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                New Project
+            <nav className="flex items-center gap-1">
+              {navLink('/', 'Dashboard', <Home className="w-4 h-4" />)}
+              {navLink('/rates', 'Rates', <Database className="w-4 h-4" />)}
+              {navLink('/compare', 'Compare', <BarChart3 className="w-4 h-4" />)}
+              <Link to="/new" className="flex items-center gap-2 px-4 py-2 bg-angelina-600 text-white rounded-lg text-sm font-medium hover:bg-angelina-700 transition-colors ml-2">
+                <Plus className="w-4 h-4" /> New Project
               </Link>
             </nav>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
