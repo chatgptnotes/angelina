@@ -47,11 +47,99 @@ const LandingPage: React.FC = () => {
               See How It Works
             </a>
           </div>
-          <div className="mt-16 bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 max-w-3xl mx-auto">
-            <div className="bg-gradient-to-br from-angelina-50 to-purple-50 rounded-xl h-64 flex items-center justify-center">
-              <div className="text-center text-gray-400">
-                <FileText className="w-16 h-16 mx-auto mb-3 text-angelina-300" />
-                <p className="text-sm">Product Dashboard Preview</p>
+          <div className="mt-16 bg-white rounded-2xl shadow-2xl border border-gray-200 p-3 max-w-4xl mx-auto">
+            {/* Fake browser chrome */}
+            <div className="flex items-center gap-2 mb-3 px-2">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                <div className="w-3 h-3 rounded-full bg-green-400" />
+              </div>
+              <div className="flex-1 bg-gray-100 rounded-md px-3 py-1 text-xs text-gray-400 font-mono">angelina-boq.vercel.app/app/project/villa-serenity</div>
+            </div>
+            {/* Dashboard mockup */}
+            <div className="bg-gradient-to-br from-gray-50 to-angelina-50/30 rounded-xl p-5 space-y-4">
+              {/* Top bar */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-lg font-bold text-gray-900">Villa Serenity — 3BHK Interior</div>
+                  <div className="text-xs text-gray-400">Client: Sharma Residence • Modern • 1,800 sqft</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-gray-900">₹24,85,000</div>
+                  <div className="text-xs text-gray-400">Total Estimate</div>
+                </div>
+              </div>
+              {/* Stats cards */}
+              <div className="grid grid-cols-4 gap-3">
+                {[
+                  { label: 'Rooms', value: '6', color: 'bg-angelina-100 text-angelina-700' },
+                  { label: 'Items', value: '87', color: 'bg-blue-100 text-blue-700' },
+                  { label: 'AI Extracted', value: '72', color: 'bg-green-100 text-green-700' },
+                  { label: 'Categories', value: '12', color: 'bg-orange-100 text-orange-700' },
+                ].map((s, i) => (
+                  <div key={i} className={`${s.color} rounded-lg p-3 text-center`}>
+                    <div className="text-xl font-bold">{s.value}</div>
+                    <div className="text-[10px] font-medium opacity-75">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Room BOQ table mockup */}
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-angelina-100 rounded flex items-center justify-center">
+                      <FileText className="w-3.5 h-3.5 text-angelina-600" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">Living Room</span>
+                    <span className="text-xs text-gray-400">14 items • 350 sqft</span>
+                  </div>
+                  <span className="text-sm font-bold text-gray-900">₹6,42,800</span>
+                </div>
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50/50">
+                    <tr className="text-gray-500">
+                      <th className="px-4 py-1.5 text-left font-medium">Category</th>
+                      <th className="px-4 py-1.5 text-left font-medium">Description</th>
+                      <th className="px-4 py-1.5 text-right font-medium">Qty</th>
+                      <th className="px-4 py-1.5 text-right font-medium">Rate</th>
+                      <th className="px-4 py-1.5 text-right font-medium">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {[
+                      { cat: 'Flooring', catColor: 'bg-amber-100 text-amber-700', desc: 'Italian Marble — Botticino', spec: '20mm polished, anti-skid', qty: '350 sqft', rate: '₹380', amt: '₹1,33,000', conf: '90%' },
+                      { cat: 'Wall Finish', catColor: 'bg-purple-100 text-purple-700', desc: 'Asian Paints Royale Luxury', spec: 'Matte finish, 2 coats + primer', qty: '840 sqft', rate: '₹45', amt: '₹37,800', conf: '85%' },
+                      { cat: 'Ceiling', catColor: 'bg-blue-100 text-blue-700', desc: 'Gypsum false ceiling with cove', spec: '12.5mm board, L-box cove', qty: '350 sqft', rate: '₹120', amt: '₹42,000', conf: '88%' },
+                      { cat: 'Furniture', catColor: 'bg-green-100 text-green-700', desc: 'TV unit with storage', spec: 'Marine plywood, laminate, 8ft', qty: '1 nos', rate: '₹65,000', amt: '₹65,000', conf: '70%' },
+                      { cat: 'Electrical', catColor: 'bg-yellow-100 text-yellow-700', desc: 'LED recessed downlights 12W', spec: 'Philips, warm white 3000K', qty: '16 nos', rate: '₹850', amt: '₹13,600', conf: '80%' },
+                    ].map((r, i) => (
+                      <tr key={i} className="hover:bg-gray-50/50">
+                        <td className="px-4 py-2"><span className={`${r.catColor} text-[10px] px-1.5 py-0.5 rounded-full font-medium`}>{r.cat}</span></td>
+                        <td className="px-4 py-2">
+                          <div className="font-medium text-gray-800">{r.desc}</div>
+                          <div className="text-gray-400 text-[10px]">{r.spec}</div>
+                          <div className="text-angelina-500 text-[10px]">AI • {r.conf} confidence</div>
+                        </td>
+                        <td className="px-4 py-2 text-right text-gray-700">{r.qty}</td>
+                        <td className="px-4 py-2 text-right text-gray-700">{r.rate}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-gray-900">{r.amt}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Bottom bar */}
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-400" /> AI Extracted: 72 items</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gray-300" /> Manual: 15 items</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="bg-angelina-100 text-angelina-700 px-2 py-0.5 rounded text-[10px] font-medium">Export Excel</span>
+                  <span className="bg-angelina-100 text-angelina-700 px-2 py-0.5 rounded text-[10px] font-medium">Export PDF</span>
+                  <span className="bg-angelina-100 text-angelina-700 px-2 py-0.5 rounded text-[10px] font-medium">Share</span>
+                </div>
               </div>
             </div>
           </div>
