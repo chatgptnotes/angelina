@@ -86,8 +86,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-    if (error) throw error;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/app' }
+    });
+    if (error) {
+      if (error.message?.includes('not enabled') || error.message?.includes('unsupported')) {
+        throw new Error('Google login is not configured yet. Please use email/password or magic link.');
+      }
+      throw error;
+    }
   };
 
   const signInWithMagicLink = async (email: string) => {
