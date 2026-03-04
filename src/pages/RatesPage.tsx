@@ -1,125 +1,162 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Search, Plus, Save, X, Edit3, Trash2, Database } from 'lucide-react';
-import supabase from '../services/supabase';
+import { Search, Plus, Save, X, Edit3, Trash2, Database, Download, Upload } from 'lucide-react';
+import { UAE_RATES, UAE_RATE_CATEGORIES } from '../data/uaeRates';
+import type { UAERate } from '../data/uaeRates';
 
-interface Rate {
+interface EditableRate extends UAERate {
   id: string;
-  category: string;
-  item_name: string;
-  specification: string | null;
-  unit: string;
-  rate_low: number | null;
-  rate_mid: number | null;
-  rate_high: number | null;
-  city: string;
-  updated_at: string;
+  isCustom?: boolean;
 }
 
-const CATEGORIES = [
-  'civil','flooring','wall_finish','ceiling','furniture','fixtures',
-  'electrical','plumbing','doors_windows','kitchen','decorative','miscellaneous'
-];
+const CATEGORY_LABELS: Record<string, string> = {
+  civil: 'Civil Works', flooring: 'Flooring', wall_finish: 'Wall Finish',
+  ceiling: 'Ceiling', furniture: 'Furniture', fixtures: 'Fixtures',
+  electrical: 'Electrical', plumbing: 'Plumbing', doors_windows: 'Doors & Windows',
+  kitchen: 'Kitchen', decorative: 'Decorative', hvac: 'HVAC',
+  fire_fighting: 'Fire Fighting', low_current: 'Low Current',
+  drainage: 'Drainage', external_works: 'External Works',
+  preliminaries: 'Preliminaries', miscellaneous: 'Miscellaneous',
+};
 
-const UNITS = ['sqft','sqm','rft','nos','set','lot','kg','ltr','cum','bag'];
+const UNITS = ['sqft', 'sqm', 'rft', 'nos', 'set', 'lot', 'kg', 'ltr', 'cum', 'bag'];
 
 const RatesPage: React.FC = () => {
-  const [rates, setRates] = useState<Rate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [customRates, setCustomRates] = useState<EditableRate[]>([]);
+  const [overrides, setOverrides] = useState<Record<string, number>>({});
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('');
-  const [filterCity, setFilterCity] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<Rate>>({});
+  const [editData, setEditData] = useState<Partial<EditableRate>>({});
   const [adding, setAdding] = useState(false);
-  const [newRate, setNewRate] = useState<Partial<Rate>>({
-    category: 'flooring', item_name: '', specification: '', unit: 'sqft',
-    rate_low: 0, rate_mid: 0, rate_high: 0, city: 'All'
+  const [newRate, setNewRate] = useState<Partial<EditableRate>>({
+    category: 'civil', item: '', description: '', unit: 'sqm',
+    rate_aed: 0, subcategory: '',
   });
 
-  useEffect(() => { loadRates(); }, []);
+  // Combine UAE rates with custom rates
+  const allRates: EditableRate[] = useMemo(() => {
+    const baseRates = UAE_RATES.map((r, i) => ({
+      ...r,
+      id: `uae-${i}`,
+      rate_aed: overrides[`uae-${i}`] ?? r.rate_aed,
+    }));
+    return [...baseRates, ...customRates];
+  }, [customRates, overrides]);
 
-  const loadRates = async () => {
-    try {
-      const { data, error } = await supabase.from('boq_rates').select('*').order('category').order('item_name');
-      if (error) throw error;
-      setRates(data || []);
-    } catch (e: any) {
-      toast.error('Failed to load rates');
-    } finally { setLoading(false); }
-  };
-
-  const cities = [...new Set(rates.map(r => r.city).filter(Boolean))];
-
-  const filtered = rates.filter(r => {
+  const filtered = allRates.filter(r => {
     if (filterCat && r.category !== filterCat) return false;
-    if (filterCity && r.city !== filterCity) return false;
     if (search) {
       const s = search.toLowerCase();
-      return r.item_name.toLowerCase().includes(s) || (r.specification || '').toLowerCase().includes(s);
+      return r.item.toLowerCase().includes(s) || r.description.toLowerCase().includes(s) || r.subcategory.toLowerCase().includes(s);
     }
     return true;
   });
 
-  const startEdit = (rate: Rate) => {
+  const startEdit = (rate: EditableRate) => {
     setEditingId(rate.id);
     setEditData({ ...rate });
   };
 
-  const saveEdit = async () => {
+  const saveEdit = () => {
     if (!editingId) return;
-    try {
-      const { error } = await supabase.from('boq_rates').update({
-        category: editData.category, item_name: editData.item_name,
-        specification: editData.specification, unit: editData.unit,
-        rate_low: editData.rate_low, rate_mid: editData.rate_mid,
-        rate_high: editData.rate_high, city: editData.city,
-        updated_at: new Date().toISOString()
-      }).eq('id', editingId);
-      if (error) throw error;
-      toast.success('Rate updated');
-      setEditingId(null);
-      loadRates();
-    } catch (e: any) { toast.error('Update failed'); }
+    if (editingId.startsWith('uae-')) {
+      // Override base rate
+      setOverrides(prev => ({ ...prev, [editingId]: editData.rate_aed || 0 }));
+    } else {
+      // Update custom rate
+      setCustomRates(prev => prev.map(r =>
+        r.id === editingId ? { ...r, ...editData } as EditableRate : r
+      ));
+    }
+    toast.success('Rate updated');
+    setEditingId(null);
   };
 
-  const addRate = async () => {
-    if (!newRate.item_name) { toast.error('Item name required'); return; }
-    try {
-      const { error } = await supabase.from('boq_rates').insert({
-        ...newRate, updated_at: new Date().toISOString()
+  const addRate = () => {
+    if (!newRate.item) { toast.error('Item name required'); return; }
+    const rate: EditableRate = {
+      id: `custom-${Date.now()}`,
+      item: newRate.item || '',
+      description: newRate.description || '',
+      unit: newRate.unit || 'nos',
+      rate_aed: newRate.rate_aed || 0,
+      category: newRate.category || 'miscellaneous',
+      subcategory: newRate.subcategory || '',
+      isCustom: true,
+    };
+    setCustomRates(prev => [...prev, rate]);
+    toast.success('Rate added');
+    setAdding(false);
+    setNewRate({ category: 'civil', item: '', description: '', unit: 'sqm', rate_aed: 0, subcategory: '' });
+  };
+
+  const deleteRate = (id: string) => {
+    if (id.startsWith('uae-')) {
+      setOverrides(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
       });
-      if (error) throw error;
-      toast.success('Rate added');
-      setAdding(false);
-      setNewRate({ category: 'flooring', item_name: '', specification: '', unit: 'sqft', rate_low: 0, rate_mid: 0, rate_high: 0, city: 'All' });
-      loadRates();
-    } catch (e: any) { toast.error('Add failed'); }
+      toast.success('Rate reset to default');
+    } else {
+      setCustomRates(prev => prev.filter(r => r.id !== id));
+      toast.success('Rate deleted');
+    }
   };
 
-  const deleteRate = async (id: string) => {
-    if (!confirm('Delete this rate?')) return;
-    try {
-      await supabase.from('boq_rates').delete().eq('id', id);
-      toast.success('Deleted');
-      loadRates();
-    } catch { toast.error('Delete failed'); }
+  const exportRates = () => {
+    const data = JSON.stringify({ overrides, customRates }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'uae_rates_export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Rates exported');
   };
 
-  const fmt = (n: number | null) => n != null ? `₹${Math.round(n).toLocaleString('en-IN')}` : '-';
+  const importRates = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (data.overrides) setOverrides(data.overrides);
+        if (data.customRates) setCustomRates(data.customRates);
+        toast.success('Rates imported');
+      } catch { toast.error('Invalid rate file'); }
+    };
+    input.click();
+  };
+
+  const fmt = (n: number) => `AED ${n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Database className="w-6 h-6 text-angelina-600" /> Rate Database
+            <Database className="w-6 h-6 text-angelina-600" /> UAE Rate Database
           </h2>
-          <p className="text-gray-500 text-sm">Market rates for BOQ estimation • {rates.length} rates</p>
+          <p className="text-gray-500 text-sm">UAE construction market rates in AED - {allRates.length} rates</p>
         </div>
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 px-4 py-2 bg-angelina-600 text-white rounded-lg font-medium hover:bg-angelina-700">
-          <Plus className="w-4 h-4" /> Add Rate
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={importRates} className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg border border-gray-200">
+            <Upload className="w-4 h-4" /> Import
+          </button>
+          <button onClick={exportRates} className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg border border-gray-200">
+            <Download className="w-4 h-4" /> Export
+          </button>
+          <button onClick={() => setAdding(true)} className="flex items-center gap-2 px-4 py-2 bg-angelina-600 text-white rounded-lg font-medium hover:bg-angelina-700">
+            <Plus className="w-4 h-4" /> Add Rate
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -132,12 +169,7 @@ const RatesPage: React.FC = () => {
         <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
           <option value="">All Categories</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c.replace('_',' ')}</option>)}
-        </select>
-        <select value={filterCity} onChange={e => setFilterCity(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-          <option value="">All Cities</option>
-          {cities.map(c => <option key={c} value={c}>{c}</option>)}
+          {UAE_RATE_CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c] || c}</option>)}
         </select>
       </div>
 
@@ -145,27 +177,23 @@ const RatesPage: React.FC = () => {
       {adding && (
         <div className="bg-angelina-50 border border-angelina-200 rounded-xl p-4 mb-4">
           <h3 className="font-semibold mb-3">Add New Rate</h3>
-          <div className="grid grid-cols-4 gap-3 text-sm">
-            <select value={newRate.category} onChange={e => setNewRate({...newRate, category: e.target.value})}
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <select value={newRate.category} onChange={e => setNewRate({ ...newRate, category: e.target.value })}
               className="px-3 py-2 border rounded-lg">
-              {CATEGORIES.map(c => <option key={c} value={c}>{c.replace('_',' ')}</option>)}
+              {UAE_RATE_CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c] || c}</option>)}
             </select>
-            <input value={newRate.item_name} onChange={e => setNewRate({...newRate, item_name: e.target.value})}
+            <input value={newRate.item} onChange={e => setNewRate({ ...newRate, item: e.target.value })}
               placeholder="Item name" className="px-3 py-2 border rounded-lg" />
-            <input value={newRate.specification || ''} onChange={e => setNewRate({...newRate, specification: e.target.value})}
-              placeholder="Specification" className="px-3 py-2 border rounded-lg" />
-            <select value={newRate.unit} onChange={e => setNewRate({...newRate, unit: e.target.value})}
+            <input value={newRate.subcategory || ''} onChange={e => setNewRate({ ...newRate, subcategory: e.target.value })}
+              placeholder="Subcategory" className="px-3 py-2 border rounded-lg" />
+            <input value={newRate.description} onChange={e => setNewRate({ ...newRate, description: e.target.value })}
+              placeholder="Description" className="px-3 py-2 border rounded-lg col-span-2" />
+            <select value={newRate.unit} onChange={e => setNewRate({ ...newRate, unit: e.target.value })}
               className="px-3 py-2 border rounded-lg">
               {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
             </select>
-            <input type="number" value={newRate.rate_low || ''} onChange={e => setNewRate({...newRate, rate_low: +e.target.value})}
-              placeholder="Rate Low" className="px-3 py-2 border rounded-lg" />
-            <input type="number" value={newRate.rate_mid || ''} onChange={e => setNewRate({...newRate, rate_mid: +e.target.value})}
-              placeholder="Rate Mid" className="px-3 py-2 border rounded-lg" />
-            <input type="number" value={newRate.rate_high || ''} onChange={e => setNewRate({...newRate, rate_high: +e.target.value})}
-              placeholder="Rate High" className="px-3 py-2 border rounded-lg" />
-            <input value={newRate.city || ''} onChange={e => setNewRate({...newRate, city: e.target.value})}
-              placeholder="City" className="px-3 py-2 border rounded-lg" />
+            <input type="number" value={newRate.rate_aed || ''} onChange={e => setNewRate({ ...newRate, rate_aed: +e.target.value })}
+              placeholder="Rate (AED)" className="px-3 py-2 border rounded-lg" />
           </div>
           <div className="flex gap-2 mt-3">
             <button onClick={addRate} className="px-4 py-2 bg-angelina-600 text-white rounded-lg text-sm font-medium hover:bg-angelina-700">
@@ -183,12 +211,9 @@ const RatesPage: React.FC = () => {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Category</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Item</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Spec</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Unit</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Low</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Mid</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">High</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">City</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Rate (AED)</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 w-24">Actions</th>
             </tr>
           </thead>
@@ -196,16 +221,12 @@ const RatesPage: React.FC = () => {
             {filtered.map(rate => (
               editingId === rate.id ? (
                 <tr key={rate.id} className="bg-angelina-50">
-                  <td className="px-4 py-2"><select value={editData.category} onChange={e => setEditData({...editData, category: e.target.value})} className="w-full px-2 py-1 border rounded text-xs">
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c.replace('_',' ')}</option>)}</select></td>
-                  <td className="px-4 py-2"><input value={editData.item_name || ''} onChange={e => setEditData({...editData, item_name: e.target.value})} className="w-full px-2 py-1 border rounded text-xs" /></td>
-                  <td className="px-4 py-2"><input value={editData.specification || ''} onChange={e => setEditData({...editData, specification: e.target.value})} className="w-full px-2 py-1 border rounded text-xs" /></td>
-                  <td className="px-4 py-2"><select value={editData.unit} onChange={e => setEditData({...editData, unit: e.target.value})} className="w-full px-2 py-1 border rounded text-xs">
+                  <td className="px-4 py-2"><span className="text-xs">{CATEGORY_LABELS[rate.category] || rate.category}</span></td>
+                  <td className="px-4 py-2"><input value={editData.item || ''} onChange={e => setEditData({ ...editData, item: e.target.value })} className="w-full px-2 py-1 border rounded text-xs" /></td>
+                  <td className="px-4 py-2"><input value={editData.description || ''} onChange={e => setEditData({ ...editData, description: e.target.value })} className="w-full px-2 py-1 border rounded text-xs" /></td>
+                  <td className="px-4 py-2"><select value={editData.unit || ''} onChange={e => setEditData({ ...editData, unit: e.target.value })} className="w-full px-1 py-1 border rounded text-xs">
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></td>
-                  <td className="px-4 py-2"><input type="number" value={editData.rate_low || ''} onChange={e => setEditData({...editData, rate_low: +e.target.value})} className="w-20 px-2 py-1 border rounded text-xs text-right" /></td>
-                  <td className="px-4 py-2"><input type="number" value={editData.rate_mid || ''} onChange={e => setEditData({...editData, rate_mid: +e.target.value})} className="w-20 px-2 py-1 border rounded text-xs text-right" /></td>
-                  <td className="px-4 py-2"><input type="number" value={editData.rate_high || ''} onChange={e => setEditData({...editData, rate_high: +e.target.value})} className="w-20 px-2 py-1 border rounded text-xs text-right" /></td>
-                  <td className="px-4 py-2"><input value={editData.city || ''} onChange={e => setEditData({...editData, city: e.target.value})} className="w-full px-2 py-1 border rounded text-xs" /></td>
+                  <td className="px-4 py-2"><input type="number" value={editData.rate_aed || ''} onChange={e => setEditData({ ...editData, rate_aed: +e.target.value })} className="w-full px-2 py-1 border rounded text-xs text-right" /></td>
                   <td className="px-4 py-2 text-center">
                     <button onClick={saveEdit} className="text-green-600 hover:text-green-800 mr-2"><Save className="w-4 h-4 inline" /></button>
                     <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4 inline" /></button>
@@ -213,25 +234,29 @@ const RatesPage: React.FC = () => {
                 </tr>
               ) : (
                 <tr key={rate.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2"><span className="text-xs px-2 py-0.5 rounded-full bg-angelina-100 text-angelina-700">{rate.category.replace('_',' ')}</span></td>
-                  <td className="px-4 py-2 font-medium text-gray-900">{rate.item_name}</td>
-                  <td className="px-4 py-2 text-gray-500 text-xs">{rate.specification || '-'}</td>
+                  <td className="px-4 py-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-angelina-100 text-angelina-700">{CATEGORY_LABELS[rate.category] || rate.category}</span>
+                    {rate.subcategory && <span className="text-xs text-gray-400 ml-1">{rate.subcategory}</span>}
+                  </td>
+                  <td className="px-4 py-2 font-medium text-gray-900">{rate.item}</td>
+                  <td className="px-4 py-2 text-gray-500 text-xs">{rate.description}</td>
                   <td className="px-4 py-2 text-gray-500">{rate.unit}</td>
-                  <td className="px-4 py-2 text-right text-gray-600">{fmt(rate.rate_low)}</td>
-                  <td className="px-4 py-2 text-right font-medium text-gray-900">{fmt(rate.rate_mid)}</td>
-                  <td className="px-4 py-2 text-right text-gray-600">{fmt(rate.rate_high)}</td>
-                  <td className="px-4 py-2 text-gray-500">{rate.city}</td>
+                  <td className="px-4 py-2 text-right font-medium text-gray-900">
+                    {fmt(rate.rate_aed)}
+                    {overrides[rate.id] !== undefined && <span className="text-xs text-angelina-500 ml-1">(modified)</span>}
+                  </td>
                   <td className="px-4 py-2 text-center">
                     <button onClick={() => startEdit(rate)} className="text-angelina-600 hover:text-angelina-800 mr-2"><Edit3 className="w-4 h-4 inline" /></button>
-                    <button onClick={() => deleteRate(rate.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4 inline" /></button>
+                    <button onClick={() => deleteRate(rate.id)} className="text-red-400 hover:text-red-600">
+                      <Trash2 className="w-4 h-4 inline" />
+                    </button>
                   </td>
                 </tr>
               )
             ))}
           </tbody>
         </table>
-        {loading && <div className="p-8 text-center"><div className="animate-spin w-6 h-6 border-4 border-angelina-200 border-t-angelina-600 rounded-full mx-auto" /></div>}
-        {!loading && filtered.length === 0 && <div className="p-8 text-center text-gray-400">No rates found</div>}
+        {filtered.length === 0 && <div className="p-8 text-center text-gray-400">No rates found</div>}
       </div>
     </div>
   );

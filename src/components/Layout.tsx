@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Home, Plus, Database, BarChart3, Sparkles, Menu, X, ChevronRight, BookOpen, Package, Layers } from 'lucide-react';
+import { Home, Plus, Database, BarChart3, Sparkles, Menu, X, ChevronRight, BookOpen, Package, Layers, Calculator, Ruler, Globe } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
 import GlobalSearch from './GlobalSearch';
@@ -31,11 +31,15 @@ const Layout: React.FC = () => {
     breadcrumbs.push({ label: 'Project' });
     if (location.pathname.endsWith('/settings')) {
       breadcrumbs.push({ label: 'Settings' });
+    } else if (location.pathname.endsWith('/estimate')) {
+      breadcrumbs.push({ label: 'QS Estimate' });
+    } else if (location.pathname.endsWith('/drawings')) {
+      breadcrumbs.push({ label: 'Drawing Analysis' });
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -44,8 +48,8 @@ const Layout: React.FC = () => {
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-lg font-bold text-gray-900">Angelina BOQ</h1>
-                <p className="text-xs text-gray-500">AI Interior Design Estimation</p>
+                <h1 className="text-lg font-bold text-gray-900">Angelina</h1>
+                <p className="text-xs text-gray-500">AI Quantity Surveyor</p>
               </div>
             </Link>
 
@@ -94,7 +98,7 @@ const Layout: React.FC = () => {
         )}
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
         {/* Breadcrumbs */}
         {breadcrumbs.length > 0 && (
           <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
@@ -112,6 +116,21 @@ const Layout: React.FC = () => {
         )}
         <Outlet />
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <div className="flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5" />
+              <a href="https://drmhope.com" target="_blank" rel="noopener noreferrer" className="hover:text-angelina-600 transition-colors">drmhope.com</a>
+              <span>|</span>
+              <span>A Bettroi Product</span>
+            </div>
+            <span>v2.0.0</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

@@ -56,6 +56,12 @@ export type BOQCategory =
   | 'doors_windows' // Doors, windows, hardware, glass
   | 'kitchen'      // Modular kitchen, countertop, chimney, hob
   | 'decorative'   // Curtains, blinds, art, mirrors, accessories
+  | 'hvac'         // HVAC ducting, FCU, AHU, Chiller, VRF
+  | 'fire_fighting' // Sprinklers, FM200, fire alarm, smoke detectors
+  | 'low_current'  // CCTV, access control, PA system, structured cabling
+  | 'drainage'     // UPVC drainage, manholes, grease traps
+  | 'external_works' // Landscaping, paving, fencing, signage
+  | 'preliminaries' // Site setup, insurance, bonds, mobilization
   | 'miscellaneous';
 
 export interface BOQDocument {

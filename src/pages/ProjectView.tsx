@@ -3,8 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Upload, Sparkles, Download, FileText, Trash2, Plus,
-  ChevronDown, ChevronUp, DollarSign, Settings, Copy,
-  Share2, Eye, EyeOff, Edit3, Save, X, RefreshCw
+  ChevronDown, ChevronUp, Settings, Copy,
+  Share2, Eye, EyeOff, Edit3, Save, X, RefreshCw,
+  Calculator, Layers
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { BOQService } from '../services/boqService';
@@ -25,6 +26,12 @@ const CATEGORIES: { value: BOQCategory; label: string; color: string }[] = [
   { value: 'doors_windows', label: 'Doors & Windows', color: '#8B5CF6' },
   { value: 'kitchen', label: 'Kitchen', color: '#EF4444' },
   { value: 'decorative', label: 'Decorative', color: '#EC4899' },
+  { value: 'hvac', label: 'HVAC', color: '#14B8A6' },
+  { value: 'fire_fighting', label: 'Fire Fighting', color: '#DC2626' },
+  { value: 'low_current', label: 'Low Current', color: '#6366F1' },
+  { value: 'drainage', label: 'Drainage', color: '#0891B2' },
+  { value: 'external_works', label: 'External Works', color: '#65A30D' },
+  { value: 'preliminaries', label: 'Preliminaries', color: '#78716C' },
   { value: 'miscellaneous', label: 'Misc', color: '#6B7280' },
 ];
 
@@ -40,7 +47,7 @@ const ProjectView: React.FC = () => {
   const [documents, setDocuments] = useState<BOQDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [extracting, setExtracting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'boq' | 'documents' | 'summary'>('boq');
+  const [activeTab, setActiveTab] = useState<'boq' | 'documents' | 'summary' | 'estimate' | 'drawings'>('boq');
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
   const [totals, setTotals] = useState<any>(null);
   // Item editing
@@ -144,15 +151,12 @@ const ProjectView: React.FC = () => {
   // AI re-analyze for a single room
   const handleReanalyzeRoom = async (room: BOQRoom) => {
     if (!id || !project) return;
-    const roomDocs = documents.filter(d => d.processing_status === 'completed' || documents.length > 0);
     if (documents.length === 0) { toast.error('No documents to analyze'); return; }
     setExtracting(true);
     try {
       toast.loading(`Re-analyzing ${room.name}...`, { id: 'reanalyze' });
-      // Delete existing items for this room
       const roomItems = items.filter(i => i.room_id === room.id);
       for (const item of roomItems) await BOQService.deleteItem(item.id);
-      // Re-extract using first document
       const doc = documents[0];
       const result = await AIExtractor.extractFromDocument(doc.file_url, doc.file_type, {
         style: project.style, total_area: room.area_sqft, num_rooms: 1,
@@ -222,7 +226,6 @@ const ProjectView: React.FC = () => {
   const deleteRoom = async (roomId: string) => {
     if (!confirm('Delete this room and all its items?')) return;
     try {
-      // Delete items first
       const roomItems = items.filter(i => i.room_id === roomId);
       for (const item of roomItems) await BOQService.deleteItem(item.id);
       await BOQService.deleteRoom(roomId);
@@ -256,14 +259,14 @@ const ProjectView: React.FC = () => {
         status: 'draft', currency: project.currency,
       });
       for (const room of rooms) {
-        const newRoom = await BOQService.createRoom({
+        const newRm = await BOQService.createRoom({
           project_id: newProj.id, name: room.name, type: room.type,
           area_sqft: room.area_sqft, order: room.order,
         });
         const roomItems = items.filter(i => i.room_id === room.id);
         if (roomItems.length > 0) {
           await BOQService.bulkCreateItems(roomItems.map(item => ({
-            project_id: newProj.id, room_id: newRoom.id, category: item.category,
+            project_id: newProj.id, room_id: newRm.id, category: item.category,
             description: item.description, specification: item.specification, unit: item.unit,
             quantity: item.quantity, rate: item.rate, source: 'manual' as const, order: item.order,
           })));
@@ -274,8 +277,8 @@ const ProjectView: React.FC = () => {
     } catch { toast.error('Duplicate failed', { id: 'dup' }); }
   };
 
-  // Format
-  const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+  // Format - AED
+  const fmt = (n: number) => `AED ${n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const withMargin = (n: number) => showClientPrice && marginPct > 0 ? n * (1 + marginPct / 100) : n;
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-angelina-200 border-t-angelina-600 rounded-full" /></div>;
@@ -285,6 +288,14 @@ const ProjectView: React.FC = () => {
   const roomTotal = (roomId: string) => roomItemsFn(roomId).reduce((s, i) => s + (i.amount || 0), 0);
   const grandTotal = items.reduce((s, i) => s + (i.amount || 0), 0);
 
+  const tabs = [
+    { key: 'boq' as const, label: 'Bill of Quantities' },
+    { key: 'documents' as const, label: 'Documents' },
+    { key: 'summary' as const, label: 'Summary' },
+    { key: 'estimate' as const, label: 'QS Estimate' },
+    { key: 'drawings' as const, label: 'Drawing Analysis' },
+  ];
+
   return (
     <div>
       {/* Project Header */}
@@ -292,7 +303,7 @@ const ProjectView: React.FC = () => {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{project.name}</h2>
-            <p className="text-gray-500">{project.client} {project.location && `• ${project.location}`}</p>
+            <p className="text-gray-500">{project.client} {project.location && `- ${project.location}`}</p>
             <div className="flex items-center gap-3 mt-3 text-sm flex-wrap">
               {project.style && <span className="px-2 py-1 bg-angelina-50 text-angelina-700 rounded-md">{project.style}</span>}
               {project.total_area_sqft && <span className="text-gray-500">{project.total_area_sqft} sqft</span>}
@@ -304,6 +315,12 @@ const ProjectView: React.FC = () => {
             <div className="text-3xl font-bold text-gray-900">{fmt(withMargin(grandTotal))}</div>
             <div className="text-sm text-gray-500">{showClientPrice && marginPct > 0 ? 'Client Price' : 'Cost Estimate'}</div>
             <div className="flex items-center gap-2">
+              <Link to={`/app/project/${id}/estimate`} className="p-2 text-angelina-500 hover:text-angelina-700 hover:bg-angelina-50 rounded-lg" title="QS Estimate">
+                <Calculator className="w-4 h-4" />
+              </Link>
+              <Link to={`/app/project/${id}/drawings`} className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg" title="Drawing Analysis">
+                <Layers className="w-4 h-4" />
+              </Link>
               <Link to={`/app/project/${id}/settings`} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                 <Settings className="w-4 h-4" />
               </Link>
@@ -327,13 +344,17 @@ const ProjectView: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 bg-white rounded-lg border border-gray-200 p-1">
-        {(['boq', 'documents', 'summary'] as const).map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-colors capitalize ${
-              activeTab === tab ? 'bg-angelina-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+      <div className="flex items-center gap-1 mb-6 bg-white rounded-lg border border-gray-200 p-1 overflow-x-auto">
+        {tabs.map(tab => (
+          <button key={tab.key} onClick={() => {
+            if (tab.key === 'estimate') { navigate(`/app/project/${id}/estimate`); return; }
+            if (tab.key === 'drawings') { navigate(`/app/project/${id}/drawings`); return; }
+            setActiveTab(tab.key);
+          }}
+            className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              activeTab === tab.key ? 'bg-angelina-600 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}>
-            {tab === 'boq' ? 'Bill of Quantities' : tab}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -348,8 +369,9 @@ const ProjectView: React.FC = () => {
               <p className="text-gray-500 mb-4">Upload design documents for AI extraction, or generate a demo BOQ</p>
               <div className="flex items-center justify-center gap-3">
                 <button onClick={handleDemoExtract} disabled={extracting}
-                  className="px-5 py-2.5 bg-angelina-600 text-white rounded-lg font-medium hover:bg-angelina-700 disabled:opacity-50">
-                  {extracting ? 'Generating...' : '✨ Generate Demo BOQ'}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-angelina-600 text-white rounded-lg font-medium hover:bg-angelina-700 disabled:opacity-50">
+                  <Sparkles className="w-4 h-4" />
+                  {extracting ? 'Generating...' : 'Generate Demo BOQ'}
                 </button>
               </div>
             </div>
@@ -414,7 +436,7 @@ const ProjectView: React.FC = () => {
                     ) : (
                       <div>
                         <h3 className="font-semibold text-gray-900">{room.name}</h3>
-                        <p className="text-xs text-gray-500">{rItems.length} items {room.area_sqft && `• ${room.area_sqft} sqft`}</p>
+                        <p className="text-xs text-gray-500">{rItems.length} items {room.area_sqft && `- ${room.area_sqft} sqft`}</p>
                       </div>
                     )}
                   </div>
@@ -505,7 +527,7 @@ const ProjectView: React.FC = () => {
                               <td className="px-4 py-2">
                                 <div className="font-medium text-gray-900">{item.description}</div>
                                 {item.specification && <div className="text-xs text-gray-400 mt-0.5">{item.specification}</div>}
-                                {item.source === 'ai_extracted' && item.confidence && <div className="text-xs text-angelina-500 mt-0.5">AI • {item.confidence}%</div>}
+                                {item.source === 'ai_extracted' && item.confidence && <div className="text-xs text-angelina-500 mt-0.5">AI - {item.confidence}%</div>}
                               </td>
                               <td className="px-4 py-2 text-gray-500">{item.unit}</td>
                               <td className="px-4 py-2 text-right text-gray-900">{item.quantity}</td>
@@ -611,7 +633,7 @@ const ProjectView: React.FC = () => {
                 <FileText className="w-8 h-8 text-gray-400" />
                 <div>
                   <div className="font-medium text-gray-900">{doc.filename}</div>
-                  <div className="text-xs text-gray-500">{doc.file_type} • {(doc.file_size / 1024).toFixed(0)} KB</div>
+                  <div className="text-xs text-gray-500">{doc.file_type} - {(doc.file_size / 1024).toFixed(0)} KB</div>
                 </div>
               </div>
               <button onClick={() => handleExtract(doc)} disabled={extracting}

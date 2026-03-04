@@ -16,6 +16,8 @@ import OnboardingPage from './pages/onboarding/OnboardingPage';
 // App pages
 import Dashboard from './pages/Dashboard';
 import ProjectView from './pages/ProjectView';
+import QSEstimate from './pages/QSEstimate';
+import DrawingAnalysis from './pages/DrawingAnalysis';
 import NewProject from './pages/NewProject';
 import RatesPage from './pages/RatesPage';
 import ComparePage from './pages/ComparePage';
@@ -52,6 +54,8 @@ const App: React.FC = () => {
             <Route path="/app" element={<Dashboard />} />
             <Route path="/app/project/:id" element={<ProjectView />} />
             <Route path="/app/project/:id/settings" element={<ProjectSettings />} />
+            <Route path="/app/project/:id/qs-estimate" element={<QSEstimate />} />
+            <Route path="/app/project/:id/drawing-analysis" element={<DrawingAnalysis />} />
             <Route path="/app/new" element={<NewProject />} />
             <Route path="/app/rates" element={<RatesPage />} />
             <Route path="/app/compare" element={<ComparePage />} />

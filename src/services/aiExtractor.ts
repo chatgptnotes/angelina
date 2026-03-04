@@ -4,46 +4,55 @@ import type { AIExtractionResult, BOQCategory } from '../types/boq';
  * AI Document Extractor for BOQ
  * Sends design documents to Claude API for analysis.
  * Extracts rooms, items, quantities, and estimates.
+ * Configured for UAE construction standards and AED currency.
  */
 
-const EXTRACTION_PROMPT = `You are an expert Quantity Surveyor (QS) for interior design projects.
+const EXTRACTION_PROMPT = `You are an expert Quantity Surveyor (QS) specializing in UAE construction projects.
 Analyze this design document and extract a detailed Bill of Quantities (BOQ).
 
-For each room visible in the document, identify:
-1. Room name and type (bedroom, living, kitchen, bathroom, etc.)
+Standards & References:
+- UAE construction standards: DEWA, SEWA, Dubai Municipality regulations
+- Classification: CSI MasterFormat
+- Measurement standard: RICS/NRM (New Rules of Measurement)
+- MEP categories: HVAC, Fire Fighting, Low Current, Plumbing, Drainage
+
+For each room/area visible in the document, identify:
+1. Room/area name and type
 2. Estimated area in sqft
-3. All interior work items with:
-   - Category (civil, flooring, wall_finish, ceiling, furniture, fixtures, electrical, plumbing, doors_windows, kitchen, decorative, miscellaneous)
+3. All work items with:
+   - Category (civil, flooring, wall_finish, ceiling, furniture, fixtures, electrical, plumbing, doors_windows, kitchen, decorative, hvac, fire_fighting, low_current, drainage, external_works, preliminaries, miscellaneous)
    - Detailed description
-   - Material specification (brand, finish, grade)
+   - Material specification (brand, finish, grade per UAE market)
    - Unit of measurement (sqft, sqm, rft, nos, set, lot, kg, ltr, cum, bag)
    - Quantity (measured or estimated)
-   - Rate per unit (in INR, based on current market rates for the specified quality)
+   - Rate per unit (in AED, based on current UAE market rates)
    - Confidence level (0-100) in the extraction
 
-Include ALL items: flooring, wall treatment, ceiling, furniture, fixtures, electrical points, 
-plumbing, doors, windows, kitchen items, decorative elements.
+Include ALL items: civil works, flooring, wall treatment, ceiling, furniture, fixtures, electrical,
+plumbing, HVAC, fire fighting, low current systems, doors, windows, external works.
 
 For 3D renders: identify materials from visual appearance (marble, wood, paint color, etc.)
 For 2D PDFs: extract from annotations, legends, material schedules, and dimensions.
+For MEP layouts: identify equipment, piping, ducting, cable routes.
 
 IMPORTANT: Be thorough. A typical room BOQ has 15-30 line items. Don't miss anything.
+All rates must be in AED (UAE Dirhams).
 
 Respond ONLY with valid JSON in this exact format:
 {
   "rooms": [
     {
-      "name": "Master Bedroom",
-      "type": "bedroom",
-      "area_sqft": 200,
+      "name": "Reception Lobby",
+      "type": "living",
+      "area_sqft": 500,
       "items": [
         {
           "category": "flooring",
-          "description": "Italian marble flooring - Statuario finish",
-          "specification": "20mm thick, mirror polished, Statuario pattern",
-          "unit": "sqft",
-          "quantity": 200,
-          "rate": 450,
+          "description": "Porcelain floor tiles - polished",
+          "specification": "800x800mm rectified, anti-slip R10",
+          "unit": "sqm",
+          "quantity": 46,
+          "rate": 250,
           "confidence": 85
         }
       ]
@@ -63,9 +72,9 @@ export class AIExtractor {
     projectContext: { style?: string; total_area?: number; num_rooms?: number }
   ): Promise<AIExtractionResult> {
     const apiKey = import.meta.env.VITE_AI_API_KEY;
-    
+
     if (!apiKey) {
-      // Demo mode — return sample extraction
+      // Demo mode - return sample extraction
       console.warn('No AI API key configured, using demo extraction');
       return this.getDemoExtraction(projectContext);
     }
@@ -111,16 +120,16 @@ export class AIExtractor {
 
       const result = await response.json();
       const content = result.content[0]?.text || '';
-      
+
       // Parse JSON from response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('No JSON found in AI response');
-      
+
       const extracted: AIExtractionResult = JSON.parse(jsonMatch[0]);
-      
+
       // Calculate total estimate
-      extracted.total_estimate = extracted.rooms.reduce((roomTotal, room) => 
-        roomTotal + room.items.reduce((itemTotal, item) => 
+      extracted.total_estimate = extracted.rooms.reduce((roomTotal, room) =>
+        roomTotal + room.items.reduce((itemTotal, item) =>
           itemTotal + (item.quantity * item.rate), 0
         ), 0
       );
@@ -134,68 +143,70 @@ export class AIExtractor {
 
   /**
    * Demo extraction for testing without AI API key
+   * Uses UAE-relevant items and AED rates
    */
   static getDemoExtraction(context: any): AIExtractionResult {
     return {
       rooms: [
         {
-          name: 'Living Room',
+          name: 'Reception Lobby',
           type: 'living',
-          area_sqft: 350,
+          area_sqft: 500,
           items: [
-            { category: 'flooring' as BOQCategory, description: 'Italian marble flooring - Botticino', specification: '20mm polished, anti-skid', unit: 'sqft', quantity: 350, rate: 380, confidence: 90 },
-            { category: 'wall_finish' as BOQCategory, description: 'Asian Paints Royale Luxury Emulsion', specification: 'Matte finish, 2 coats + primer', unit: 'sqft', quantity: 840, rate: 45, confidence: 85 },
-            { category: 'wall_finish' as BOQCategory, description: 'Decorative wall paneling - WPC', specification: '8mm WPC panels, walnut finish', unit: 'sqft', quantity: 120, rate: 250, confidence: 75 },
-            { category: 'ceiling' as BOQCategory, description: 'Gypsum false ceiling with cove', specification: '12.5mm gypsum board, L-box cove', unit: 'sqft', quantity: 350, rate: 120, confidence: 88 },
-            { category: 'electrical' as BOQCategory, description: 'LED recessed downlights 12W', specification: 'Philips, warm white 3000K', unit: 'nos', quantity: 16, rate: 850, confidence: 80 },
-            { category: 'electrical' as BOQCategory, description: 'LED strip light for cove', specification: '14.4W/m, warm white, with driver', unit: 'rft', quantity: 60, rate: 180, confidence: 82 },
-            { category: 'electrical' as BOQCategory, description: 'Modular switches & sockets', specification: 'Legrand Myrius, white', unit: 'nos', quantity: 12, rate: 450, confidence: 78 },
-            { category: 'furniture' as BOQCategory, description: 'TV unit with storage', specification: 'Marine plywood, laminate finish, 8ft', unit: 'nos', quantity: 1, rate: 65000, confidence: 70 },
-            { category: 'furniture' as BOQCategory, description: 'Display cabinet / bookshelf', specification: 'Plywood + glass, spot lit', unit: 'nos', quantity: 1, rate: 45000, confidence: 65 },
-            { category: 'decorative' as BOQCategory, description: 'Curtain rod with motorized curtains', specification: 'Double track, blackout + sheer', unit: 'set', quantity: 2, rate: 18000, confidence: 72 },
+            { category: 'flooring' as BOQCategory, description: 'Porcelain floor tiles - polished', specification: '800x800mm rectified, anti-slip R10', unit: 'sqm', quantity: 46, rate: 250, confidence: 90 },
+            { category: 'wall_finish' as BOQCategory, description: 'Wall paint - premium emulsion', specification: 'Jotun Majestic, 2 coats + primer', unit: 'sqm', quantity: 120, rate: 25, confidence: 85 },
+            { category: 'wall_finish' as BOQCategory, description: 'Feature wall - stone cladding', specification: 'Natural stone veneer, beige travertine', unit: 'sqm', quantity: 15, rate: 380, confidence: 75 },
+            { category: 'ceiling' as BOQCategory, description: 'Gypsum false ceiling with cove', specification: '12.5mm gypsum board, L-box cove lighting', unit: 'sqm', quantity: 46, rate: 165, confidence: 88 },
+            { category: 'electrical' as BOQCategory, description: 'LED recessed downlights 15W', specification: '4000K, IP44, dimmable', unit: 'nos', quantity: 20, rate: 120, confidence: 80 },
+            { category: 'electrical' as BOQCategory, description: 'LED strip light for cove', specification: '14.4W/m, warm white, with aluminum profile', unit: 'rft', quantity: 80, rate: 35, confidence: 82 },
+            { category: 'hvac' as BOQCategory, description: 'Fan Coil Unit - concealed', specification: '2-pipe, ceiling concealed, 18,000 BTU', unit: 'nos', quantity: 2, rate: 5200, confidence: 78 },
+            { category: 'fire_fighting' as BOQCategory, description: 'Concealed sprinkler heads', specification: 'K5.6, white cover plate, 68C', unit: 'nos', quantity: 6, rate: 150, confidence: 80 },
+            { category: 'fire_fighting' as BOQCategory, description: 'Smoke detectors', specification: 'Addressable optical with base', unit: 'nos', quantity: 3, rate: 280, confidence: 82 },
+            { category: 'furniture' as BOQCategory, description: 'Reception desk - custom', specification: 'Corian top, wood veneer body, LED accent', unit: 'nos', quantity: 1, rate: 25000, confidence: 70 },
           ]
         },
         {
-          name: 'Master Bedroom',
-          type: 'bedroom',
-          area_sqft: 220,
+          name: 'Open Office Area',
+          type: 'office',
+          area_sqft: 1200,
           items: [
-            { category: 'flooring' as BOQCategory, description: 'Engineered wood flooring', specification: 'Oak, 14mm, click-lock', unit: 'sqft', quantity: 220, rate: 320, confidence: 88 },
-            { category: 'wall_finish' as BOQCategory, description: 'Wall paint - premium emulsion', specification: 'Dulux Velvet Touch, 2 coats', unit: 'sqft', quantity: 600, rate: 42, confidence: 86 },
-            { category: 'wall_finish' as BOQCategory, description: 'Accent wall - fabric paneling', specification: 'Upholstered fabric panel behind bed', unit: 'sqft', quantity: 80, rate: 350, confidence: 70 },
-            { category: 'ceiling' as BOQCategory, description: 'Gypsum false ceiling - peripheral', specification: '12.5mm board, peripheral cove only', unit: 'sqft', quantity: 220, rate: 110, confidence: 85 },
-            { category: 'furniture' as BOQCategory, description: 'Wardrobe - sliding doors', specification: 'BWP plywood, laminate, 10ft x 7ft', unit: 'nos', quantity: 1, rate: 125000, confidence: 75 },
-            { category: 'furniture' as BOQCategory, description: 'Bedside tables', specification: 'Matching laminate, 2 drawers each', unit: 'nos', quantity: 2, rate: 12000, confidence: 70 },
-            { category: 'furniture' as BOQCategory, description: 'Dresser with mirror', specification: 'Plywood, soft-close drawers', unit: 'nos', quantity: 1, rate: 28000, confidence: 68 },
-            { category: 'electrical' as BOQCategory, description: 'LED downlights 10W', specification: 'Warm white, dimmable', unit: 'nos', quantity: 10, rate: 950, confidence: 82 },
-            { category: 'electrical' as BOQCategory, description: 'Bedside pendant lights', specification: 'Designer, E27', unit: 'nos', quantity: 2, rate: 3500, confidence: 65 },
-            { category: 'doors_windows' as BOQCategory, description: 'Bedroom door - flush', specification: 'Teak frame, laminate skin, 7ft x 3ft', unit: 'nos', quantity: 1, rate: 18000, confidence: 80 },
-            { category: 'decorative' as BOQCategory, description: 'Blackout roller blinds', specification: 'Motorized, custom size', unit: 'nos', quantity: 2, rate: 8500, confidence: 75 },
+            { category: 'flooring' as BOQCategory, description: 'Carpet tiles', specification: '500x500mm, nylon, heavy commercial', unit: 'sqm', quantity: 111, rate: 95, confidence: 88 },
+            { category: 'ceiling' as BOQCategory, description: 'Mineral fiber ceiling tiles', specification: '600x600mm, T-grid system, tegular edge', unit: 'sqm', quantity: 111, rate: 85, confidence: 85 },
+            { category: 'electrical' as BOQCategory, description: 'LED panel lights 600x600', specification: '40W, 4000K, recessed in ceiling grid', unit: 'nos', quantity: 28, rate: 280, confidence: 86 },
+            { category: 'electrical' as BOQCategory, description: 'Floor boxes - power + data', specification: '4-gang with 2x Cat6A data points', unit: 'nos', quantity: 30, rate: 650, confidence: 75 },
+            { category: 'hvac' as BOQCategory, description: 'Fan Coil Units - concealed', specification: '4-pipe, ceiling concealed, 24,000 BTU', unit: 'nos', quantity: 6, rate: 5200, confidence: 80 },
+            { category: 'hvac' as BOQCategory, description: 'GI Ducting supply and return', specification: 'Galvanized iron, insulated, with grilles', unit: 'kg', quantity: 800, rate: 32, confidence: 72 },
+            { category: 'fire_fighting' as BOQCategory, description: 'Pendant sprinkler heads', specification: 'K5.6, chrome finish, 68C', unit: 'nos', quantity: 14, rate: 85, confidence: 82 },
+            { category: 'low_current' as BOQCategory, description: 'Structured cabling - Cat6A', specification: 'Single data point, tested and certified', unit: 'nos', quantity: 60, rate: 350, confidence: 78 },
+            { category: 'low_current' as BOQCategory, description: 'CCTV dome cameras', specification: 'IP 4MP, IR, PoE, indoor', unit: 'nos', quantity: 4, rate: 850, confidence: 76 },
+            { category: 'furniture' as BOQCategory, description: 'Office workstations', specification: 'L-shaped modular, with pedestal', unit: 'nos', quantity: 30, rate: 3500, confidence: 72 },
+            { category: 'doors_windows' as BOQCategory, description: 'Glass partition - frameless', specification: '12mm tempered glass, with door', unit: 'sqm', quantity: 25, rate: 850, confidence: 70 },
           ]
         },
         {
-          name: 'Kitchen',
-          type: 'kitchen',
-          area_sqft: 120,
+          name: 'Executive Office',
+          type: 'office',
+          area_sqft: 250,
           items: [
-            { category: 'kitchen' as BOQCategory, description: 'Modular kitchen - L-shaped', specification: 'Marine ply, acrylic finish, soft-close', unit: 'rft', quantity: 18, rate: 4500, confidence: 82 },
-            { category: 'kitchen' as BOQCategory, description: 'Kitchen countertop - granite', specification: 'Black galaxy, 20mm, bullnose edge', unit: 'rft', quantity: 18, rate: 950, confidence: 85 },
-            { category: 'kitchen' as BOQCategory, description: 'Kitchen backsplash tiles', specification: 'Ceramic subway tiles, white', unit: 'sqft', quantity: 45, rate: 120, confidence: 80 },
-            { category: 'kitchen' as BOQCategory, description: 'Chimney - auto-clean', specification: 'Elica/Faber, 90cm, 1200 m3/hr', unit: 'nos', quantity: 1, rate: 22000, confidence: 78 },
-            { category: 'kitchen' as BOQCategory, description: 'Built-in hob - 4 burner', specification: 'Bosch/Elica, tempered glass', unit: 'nos', quantity: 1, rate: 18000, confidence: 76 },
-            { category: 'fixtures' as BOQCategory, description: 'Kitchen sink - double bowl', specification: 'Stainless steel, Franke/Carysil', unit: 'nos', quantity: 1, rate: 12000, confidence: 80 },
-            { category: 'fixtures' as BOQCategory, description: 'Kitchen tap - pull-out', specification: 'SS, single lever, Grohe', unit: 'nos', quantity: 1, rate: 8500, confidence: 75 },
-            { category: 'flooring' as BOQCategory, description: 'Anti-skid vitrified tiles', specification: '2x2, matte, double charge', unit: 'sqft', quantity: 120, rate: 95, confidence: 85 },
-            { category: 'electrical' as BOQCategory, description: 'Under-cabinet LED strip', specification: 'Warm white, with sensor', unit: 'rft', quantity: 12, rate: 200, confidence: 72 },
+            { category: 'flooring' as BOQCategory, description: 'SPC vinyl plank flooring', specification: '5mm, wood grain, waterproof, click-lock', unit: 'sqm', quantity: 23, rate: 160, confidence: 88 },
+            { category: 'wall_finish' as BOQCategory, description: 'Wall paneling - veneer', specification: 'Natural oak veneer on MDF, lacquered', unit: 'sqm', quantity: 18, rate: 450, confidence: 70 },
+            { category: 'ceiling' as BOQCategory, description: 'Gypsum false ceiling - plain', specification: '12.5mm board, skim coat, painted', unit: 'sqm', quantity: 23, rate: 110, confidence: 85 },
+            { category: 'electrical' as BOQCategory, description: 'LED downlights 15W', specification: 'Dimmable, 3000K warm white', unit: 'nos', quantity: 8, rate: 120, confidence: 82 },
+            { category: 'hvac' as BOQCategory, description: 'Fan Coil Unit - concealed', specification: '2-pipe, 12,000 BTU', unit: 'nos', quantity: 1, rate: 3500, confidence: 80 },
+            { category: 'low_current' as BOQCategory, description: 'Access control reader', specification: 'Proximity card with EM lock', unit: 'nos', quantity: 1, rate: 1800, confidence: 75 },
+            { category: 'doors_windows' as BOQCategory, description: 'Wooden door - flush', specification: 'Hardwood frame, veneer finish, hardware', unit: 'nos', quantity: 1, rate: 2200, confidence: 80 },
+            { category: 'furniture' as BOQCategory, description: 'Executive desk', specification: 'L-shaped, engineered wood, cable management', unit: 'nos', quantity: 1, rate: 8500, confidence: 68 },
+            { category: 'decorative' as BOQCategory, description: 'Motorized roller blinds', specification: 'Blackout fabric, remote controlled', unit: 'nos', quantity: 2, rate: 2500, confidence: 72 },
           ]
         }
       ],
-      total_estimate: 0, // Will be calculated
+      total_estimate: 0,
       extraction_notes: [
-        'Rates based on Nagpur/Pune market prices as of 2026',
-        'Demo extraction — upload actual design documents for AI-powered extraction',
-        'Quantities estimated from typical room sizes',
-        'Material specifications are suggested based on style context'
+        'Rates based on UAE market prices (AED) as of 2026',
+        'Demo extraction - upload actual design documents for AI-powered extraction',
+        'Quantities estimated from typical commercial fit-out specifications',
+        'MEP rates include supply, installation, testing and commissioning',
+        'Compliant with Dubai Municipality and DEWA standards'
       ]
     };
   }
