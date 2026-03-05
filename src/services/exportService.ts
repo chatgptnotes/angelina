@@ -1,3 +1,4 @@
+import { fmtMoney } from '../utils/format';
 import * as XLSX from 'xlsx';
 import type { BOQProject, BOQRoom, BOQItem } from '../types/boq';
 
@@ -11,7 +12,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 export class ExportService {
   static exportExcel(project: BOQProject, rooms: BOQRoom[], items: BOQItem[]) {
     const wb = XLSX.utils.book_new();
-    const fmt = (n: number) => Math.round(n);
+    const fmt = (n: number) => fmtMoney(n);
     const grandTotal = items.reduce((s, i) => s + (i.amount || 0), 0);
 
     // === Cover Sheet ===
@@ -27,7 +28,7 @@ export class ExportService {
       [],
       ['Total Rooms:', rooms.length],
       ['Total Items:', items.length],
-      ['Grand Total:', `₹${grandTotal.toLocaleString('en-IN')}`],
+      ['Grand Total:', fmtMoney(grandTotal)],
     ];
     const coverWs = XLSX.utils.aoa_to_sheet(coverData);
     coverWs['!cols'] = [{ wch: 15 }, { wch: 40 }];
@@ -129,7 +130,7 @@ export class ExportService {
   }
 
   static exportPDF(project: BOQProject, rooms: BOQRoom[], items: BOQItem[], marginPct: number = 0) {
-    const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+    const fmt = (n: number) => fmtMoney(n);
     const grandTotal = items.reduce((s, i) => s + (i.amount || 0), 0);
     const clientTotal = grandTotal * (1 + marginPct / 100);
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { fmtMoney } from '../utils/format';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -279,7 +280,7 @@ const ProjectView: React.FC = () => {
   };
 
   // Format - AED
-  const fmt = (n: number) => `AED ${n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = fmtMoney;
   const withMargin = (n: number) => showClientPrice && marginPct > 0 ? n * (1 + marginPct / 100) : n;
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-angelina-200 border-t-angelina-600 rounded-full" /></div>;

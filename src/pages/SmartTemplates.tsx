@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtMoney } from '../utils/format';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Home, Building2, UtensilsCrossed, Briefcase, ArrowRight, Check } from 'lucide-react';
@@ -164,7 +165,7 @@ const SmartTemplates: React.FC = () => {
     } finally { setCreating(false); }
   };
 
-  const fmt = (n: number) => `₹${(n / 100000).toFixed(1)}L`;
+  const fmt = fmtMoney;
 
   return (
     <div>
