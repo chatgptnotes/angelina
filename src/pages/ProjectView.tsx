@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import {
   Upload, Sparkles, Download, FileText, Trash2, Plus,
   ChevronDown, ChevronUp, Settings, Copy,
-  Share2, Eye, EyeOff, Edit3, Save, X, RefreshCw,
+  Share2, Edit3, Save, X, RefreshCw,
   Calculator, Layers, ZoomIn, ExternalLink
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
@@ -63,8 +63,6 @@ const ProjectView: React.FC = () => {
   const [addingRoom, setAddingRoom] = useState(false);
   const [newRoom, setNewRoom] = useState({ name: '', type: 'other' as string, area_sqft: '' });
   // Margin
-  const [marginPct, setMarginPct] = useState(0);
-  const [showClientPrice, setShowClientPrice] = useState(false);
 
   useEffect(() => { if (id) loadProjectData(); }, [id]);
 
@@ -83,7 +81,6 @@ const ProjectView: React.FC = () => {
       const t = await BOQService.getProjectTotals(id);
       setTotals(t);
       // Load margin
-      if (proj) setMarginPct((proj as any).margin_percentage || 0);
     } catch (error) {
       toast.error('Failed to load project data');
     } finally { setLoading(false); }
@@ -279,9 +276,7 @@ const ProjectView: React.FC = () => {
     } catch { toast.error('Duplicate failed', { id: 'dup' }); }
   };
 
-  // Format - AED
   const fmt = fmtMoney;
-  const withMargin = (n: number) => showClientPrice && marginPct > 0 ? n * (1 + marginPct / 100) : n;
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-angelina-200 border-t-angelina-600 rounded-full" /></div>;
   if (!project) return <div className="text-center py-20 text-gray-500">Project not found</div>;
@@ -316,8 +311,8 @@ const ProjectView: React.FC = () => {
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <div className="text-3xl font-bold text-gray-900">{fmt(withMargin(grandTotal))}</div>
-            <div className="text-sm text-gray-500">{showClientPrice && marginPct > 0 ? 'Client Price' : 'Cost Estimate'}</div>
+            <div className="text-3xl font-bold text-gray-900">{fmt(grandTotal)}</div>
+            <div className="text-sm text-gray-500">Total Estimate</div>
             <div className="flex items-center gap-2">
               <Link to={`/app/project/${id}/qs-estimate`} className="p-2 text-angelina-500 hover:text-angelina-700 hover:bg-angelina-50 rounded-lg" title="QS Estimate">
                 <Calculator className="w-4 h-4" />
@@ -335,13 +330,6 @@ const ProjectView: React.FC = () => {
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg" title="Copy share link">
                 <Share2 className="w-4 h-4" />
               </button>
-              {marginPct > 0 && (
-                <button onClick={() => setShowClientPrice(!showClientPrice)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${showClientPrice ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {showClientPrice ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                  {showClientPrice ? 'Client View' : 'Cost View'}
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -447,7 +435,7 @@ const ProjectView: React.FC = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-lg font-semibold text-gray-900">{fmt(withMargin(rTotal))}</span>
+                    <span className="text-lg font-semibold text-gray-900">{fmt(rTotal)}</span>
                     {editingRoom !== room.id && (
                       <div className="flex items-center gap-1">
                         <button onClick={(e) => { e.stopPropagation(); handleReanalyzeRoom(room); }} disabled={extracting}
@@ -482,7 +470,6 @@ const ProjectView: React.FC = () => {
                           <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 w-20">Qty</th>
                           <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 w-24">Rate</th>
                           <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 w-28">Amount</th>
-                          {showClientPrice && marginPct > 0 && <th className="px-4 py-2 text-right text-xs font-medium text-green-600 w-28">Client Price</th>}
                           <th className="px-4 py-2 w-16"></th>
                         </tr>
                       </thead>
@@ -514,9 +501,7 @@ const ProjectView: React.FC = () => {
                                   className="w-full px-2 py-1 border rounded text-xs text-right" /></td>
                                 <td className="px-4 py-2"><input type="number" value={editItemData.rate || ''} onChange={e => setEditItemData({...editItemData, rate: +e.target.value})}
                                   className="w-full px-2 py-1 border rounded text-xs text-right" /></td>
-                                <td className="px-4 py-2 text-right text-xs text-gray-500">{fmt((editItemData.quantity || 0) * (editItemData.rate || 0))}</td>
-                                {showClientPrice && marginPct > 0 && <td></td>}
-                                <td className="px-4 py-2">
+                                <td className="px-4 py-2 text-right text-xs text-gray-500">{fmt((editItemData.quantity || 0) * (editItemData.rate || 0))}</td>                                <td className="px-4 py-2">
                                   <button onClick={saveEditItem} className="text-green-600 mr-1"><Save className="w-3.5 h-3.5 inline" /></button>
                                   <button onClick={() => setEditingItem(null)} className="text-gray-400"><X className="w-3.5 h-3.5 inline" /></button>
                                 </td>
@@ -538,9 +523,7 @@ const ProjectView: React.FC = () => {
                               <td className="px-4 py-2 text-gray-500">{item.unit}</td>
                               <td className="px-4 py-2 text-right text-gray-900">{item.quantity}</td>
                               <td className="px-4 py-2 text-right text-gray-900">{fmt(item.rate)}</td>
-                              <td className="px-4 py-2 text-right font-medium text-gray-900">{fmt(item.amount)}</td>
-                              {showClientPrice && marginPct > 0 && <td className="px-4 py-2 text-right font-medium text-green-700">{fmt(item.amount * (1 + marginPct / 100))}</td>}
-                              <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
+                              <td className="px-4 py-2 text-right font-medium text-gray-900">{fmt(item.amount)}</td>                              <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
                                 <button onClick={() => deleteItem(item.id)} className="text-red-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                               </td>
                             </tr>
@@ -550,9 +533,7 @@ const ProjectView: React.FC = () => {
                       <tfoot>
                         <tr className="bg-gray-50 font-semibold">
                           <td colSpan={5} className="px-4 py-2 text-right text-gray-700">Room Total</td>
-                          <td className="px-4 py-2 text-right text-gray-900">{fmt(rTotal)}</td>
-                          {showClientPrice && marginPct > 0 && <td className="px-4 py-2 text-right text-green-700">{fmt(rTotal * (1 + marginPct / 100))}</td>}
-                          <td></td>
+                          <td className="px-4 py-2 text-right text-gray-900">{fmt(rTotal)}</td>                          <td></td>
                         </tr>
                       </tfoot>
                     </table>
@@ -599,19 +580,16 @@ const ProjectView: React.FC = () => {
           {items.length > 0 && (
             <div className="bg-gradient-to-r from-angelina-600 to-purple-600 rounded-xl p-5 text-white flex items-center justify-between">
               <div>
-                <div className="text-sm text-angelina-200">
-                  {showClientPrice && marginPct > 0 ? `Client Total (${marginPct}% margin)` : `Grand Total`}
+                <div className="text-sm text-angelina-200"> Grand Total
                   {' '}({items.length} items across {rooms.length} rooms)
                 </div>
-                <div className="text-3xl font-bold mt-1">{fmt(withMargin(grandTotal))}</div>
-                {showClientPrice && marginPct > 0 && <div className="text-sm text-angelina-200 mt-1">Cost: {fmt(grandTotal)}</div>}
-              </div>
+                <div className="text-3xl font-bold mt-1">{fmt(grandTotal)}</div>              </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => ExportService.exportExcel(project, rooms, items)}
                   className="flex items-center gap-2 px-4 py-2 bg-white text-angelina-700 rounded-lg font-medium hover:bg-angelina-50">
                   <Download className="w-4 h-4" /> Excel
                 </button>
-                <button onClick={() => ExportService.exportPDF(project, rooms, items, showClientPrice ? marginPct : 0)}
+                <button onClick={() => ExportService.exportPDF(project, rooms, items, 0)}
                   className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg font-medium hover:bg-white/30 border border-white/30">
                   <FileText className="w-4 h-4" /> PDF
                 </button>

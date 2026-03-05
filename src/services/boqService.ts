@@ -25,7 +25,7 @@ export class BOQService {
   static async createProject(project: Partial<BOQProject>): Promise<BOQProject> {
     const { data, error } = await supabase
       .from('boq_projects')
-      .insert({ ...project, currency: project.currency || 'INR' })
+      .insert({ ...project, currency: project.currency || 'USD' })
       .select()
       .single();
     if (error) throw error;

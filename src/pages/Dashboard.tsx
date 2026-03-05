@@ -1,7 +1,7 @@
 import { fmtMoney } from '../utils/format';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Clock, DollarSign, Sparkles, ArrowRight, Building2, Search } from 'lucide-react';
+import { Plus, FileText, Clock, TrendingUp, Sparkles, ArrowRight, Building2, Search } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { BOQService } from '../services/boqService';
 import type { BOQProject } from '../types/boq';
@@ -183,7 +183,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <DollarSign className="w-6 h-6 text-green-600" />
+                <TrendingUp className="w-6 h-6 text-green-600" />
               </div>
               <h4 className="font-semibold text-gray-900 mb-1">3. Review & Export</h4>
               <p className="text-sm text-gray-500">Edit, approve, and export as Excel or PDF for client sharing</p>
@@ -221,7 +221,7 @@ const Dashboard: React.FC = () => {
                 <div className="flex items-center justify-between text-xs text-gray-400">
                   <div className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(project.updated_at).toLocaleDateString()}</div>
                   {project.total_estimate && (
-                    <div className="flex items-center gap-1 font-medium text-gray-600"><DollarSign className="w-3 h-3" />{fmtMoney(project.total_estimate)}</div>
+                    <div className="flex items-center gap-1 font-medium text-gray-600"><TrendingUp className="w-3 h-3" />{fmtMoney(project.total_estimate)}</div>
                   )}
                   <ArrowRight className="w-3 h-3 group-hover:text-angelina-600 transition-colors" />
                 </div>

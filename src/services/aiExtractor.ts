@@ -4,7 +4,7 @@ import type { AIExtractionResult, BOQCategory } from '../types/boq';
  * AI Document Extractor for BOQ
  * Sends design documents to Claude API for analysis.
  * Extracts rooms, items, quantities, and estimates.
- * Configured for UAE construction standards and AED currency.
+ * Configured for international construction standards.
  */
 
 const EXTRACTION_PROMPT = `You are an expert Quantity Surveyor (QS) specializing in UAE construction projects.
@@ -25,7 +25,7 @@ For each room/area visible in the document, identify:
    - Material specification (brand, finish, grade per UAE market)
    - Unit of measurement (sqft, sqm, rft, nos, set, lot, kg, ltr, cum, bag)
    - Quantity (measured or estimated)
-   - Rate per unit (in AED, based on current UAE market rates)
+   - Rate per unit (based on current market rates)
    - Confidence level (0-100) in the extraction
 
 Include ALL items: civil works, flooring, wall treatment, ceiling, furniture, fixtures, electrical,
@@ -36,7 +36,7 @@ For 2D PDFs: extract from annotations, legends, material schedules, and dimensio
 For MEP layouts: identify equipment, piping, ducting, cable routes.
 
 IMPORTANT: Be thorough. A typical room BOQ has 15-30 line items. Don't miss anything.
-All rates must be in AED (UAE Dirhams).
+Use appropriate local currency rates.
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -143,7 +143,7 @@ export class AIExtractor {
 
   /**
    * Demo extraction for testing without AI API key
-   * Uses UAE-relevant items and AED rates
+   * Uses market-relevant items and rates
    */
   static getDemoExtraction(context: any): AIExtractionResult {
     return {
@@ -202,7 +202,7 @@ export class AIExtractor {
       ],
       total_estimate: 0,
       extraction_notes: [
-        'Rates based on UAE market prices (AED) as of 2026',
+        'Rates based on current market prices as of 2026',
         'Demo extraction - upload actual design documents for AI-powered extraction',
         'Quantities estimated from typical commercial fit-out specifications',
         'MEP rates include supply, installation, testing and commissioning',

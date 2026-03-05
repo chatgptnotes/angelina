@@ -144,7 +144,7 @@ const SmartTemplates: React.FC = () => {
         total_area_sqft: template.area,
         num_rooms: template.rooms.length,
         status: 'draft',
-        currency: 'INR',
+        currency: 'USD',
       });
       for (const room of template.rooms) {
         const newRoom = await BOQService.createRoom({
