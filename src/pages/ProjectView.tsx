@@ -317,10 +317,10 @@ const ProjectView: React.FC = () => {
             <div className="text-3xl font-bold text-gray-900">{fmt(withMargin(grandTotal))}</div>
             <div className="text-sm text-gray-500">{showClientPrice && marginPct > 0 ? 'Client Price' : 'Cost Estimate'}</div>
             <div className="flex items-center gap-2">
-              <Link to={`/app/project/${id}/estimate`} className="p-2 text-angelina-500 hover:text-angelina-700 hover:bg-angelina-50 rounded-lg" title="QS Estimate">
+              <Link to={`/app/project/${id}/qs-estimate`} className="p-2 text-angelina-500 hover:text-angelina-700 hover:bg-angelina-50 rounded-lg" title="QS Estimate">
                 <Calculator className="w-4 h-4" />
               </Link>
-              <Link to={`/app/project/${id}/drawings`} className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg" title="Drawing Analysis">
+              <Link to={`/app/project/${id}/drawing-analysis`} className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg" title="Drawing Analysis">
                 <Layers className="w-4 h-4" />
               </Link>
               <Link to={`/app/project/${id}/settings`} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
@@ -349,10 +349,10 @@ const ProjectView: React.FC = () => {
       <div className="flex items-center gap-1 mb-6 bg-white rounded-lg border border-gray-200 p-1 overflow-x-auto">
         {tabs.map(tab => (
           <button key={tab.key} onClick={() => {
-            if (tab.key === 'estimate') { navigate(`/app/project/${id}/estimate`); return; }
+            if (tab.key === 'estimate') { navigate(`/app/project/${id}/qs-estimate`); return; }
             if (tab.key === 'bom') { navigate(`/app/project/${id}/bom`); return; }
             if (tab.key === 'sabi') { navigate(`/app/project/${id}/sabi`); return; }
-            if (tab.key === 'drawings') { navigate(`/app/project/${id}/drawings`); return; }
+            if (tab.key === 'drawings') { navigate(`/app/project/${id}/drawing-analysis`); return; }
             setActiveTab(tab.key);
           }}
             className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
@@ -650,6 +650,11 @@ const ProjectView: React.FC = () => {
       )}
 
       {/* Summary Tab */}
+      {activeTab === 'summary' && !totals && (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <p className="text-gray-400">No items in this project yet. Add BOQ items to see the summary.</p>
+        </div>
+      )}
       {activeTab === 'summary' && totals && (
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-5">
