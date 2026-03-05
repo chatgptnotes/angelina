@@ -127,7 +127,7 @@ const DrawingAnalysis: React.FC = () => {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Layers className="w-6 h-6 text-angelina-600" />
-          Drawing Analysis
+          Cre8 — Drawing Analysis
         </h2>
         <p className="text-gray-500 text-sm mt-1">Upload and analyze construction drawings</p>
       </div>
@@ -197,11 +197,12 @@ const DrawingAnalysis: React.FC = () => {
               {/* Preview */}
               <div className="h-[500px] overflow-auto bg-gray-100 flex items-center justify-center p-4">
                 {selected.file.type.includes('pdf') ? (
-                  <div className="text-center text-gray-500">
-                    <FileText className="w-16 h-16 mx-auto mb-3 text-gray-300" />
-                    <p className="text-sm font-medium">PDF Drawing</p>
-                    <p className="text-xs text-gray-400 mt-1">{selected.name}</p>
-                  </div>
+                  <iframe
+                    src={selected.preview}
+                    title={selected.name}
+                    className="w-full rounded"
+                    style={{ height: '480px', border: 'none' }}
+                  />
                 ) : (
                   <img src={selected.preview} alt={selected.name}
                     style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}
