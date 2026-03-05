@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fmtMoney } from '../utils/format';
+import BOQChatbot from '../components/BOQChatbot';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -811,6 +812,7 @@ const ProjectView: React.FC = () => {
           </div>
         </div>
       )}
+      <BOQChatbot project={project} rooms={rooms} items={items} onItemsAdded={loadProjectData} />
     </div>
   );
 };
