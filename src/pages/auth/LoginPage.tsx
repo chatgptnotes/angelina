@@ -12,6 +12,12 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'password' | 'magic'>('password');
 
+  const fillDemo = () => {
+    setEmail('cmd@hopehospital.com');
+    setPassword('Chindwada@1');
+    setMode('password');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -44,6 +50,15 @@ const LoginPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+          {/* Demo Login Button */}
+          <button
+            onClick={fillDemo}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 mb-4 bg-amber-50 border border-amber-300 rounded-lg text-amber-700 font-medium hover:bg-amber-100 transition-colors"
+          >
+            <Sparkles className="w-4 h-4" />
+            Try Demo - Auto-fill credentials
+          </button>
+
           <button onClick={async () => { try { await signInWithGoogle(); } catch (e: any) { toast.error(e.message || 'Google login failed'); } }} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors mb-4">
             <Chrome className="w-5 h-5" /> Continue with Google
           </button>
