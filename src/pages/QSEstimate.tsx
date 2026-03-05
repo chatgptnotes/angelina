@@ -1,3 +1,4 @@
+import { fmtMoney } from '../utils/format';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -9,11 +10,7 @@ import { BOQService } from '../services/boqService';
 import { ExportService } from '../services/exportService';
 import type { BOQProject, BOQRoom, BOQItem } from '../types/boq';
 
-const CURRENCY_RATES: Record<string, { symbol: string; rate: number; locale: string; code: string }> = {
-  AED: { symbol: 'AED', rate: 1, locale: 'en-AE', code: 'AED' },
-  USD: { symbol: 'USD', rate: 0.2723, locale: 'en-US', code: 'USD' },
-  INR: { symbol: 'INR', rate: 22.39, locale: 'en-IN', code: 'INR' },
-};
+
 
 const QSEstimate: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,7 +19,6 @@ const QSEstimate: React.FC = () => {
   const [items, setItems] = useState<BOQItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [currency, setCurrency] = useState('AED');
   const [preliminariesPct, setPreliminariesPct] = useState(12);
   const [contingencyPct, setContingencyPct] = useState(5);
   const [designFeePct, setDesignFeePct] = useState(5);
@@ -46,13 +42,7 @@ const QSEstimate: React.FC = () => {
     finally { setLoading(false); }
   };
 
-  const convert = (aed: number) => aed * CURRENCY_RATES[currency].rate;
-  const fmt = (n: number) => {
-    const converted = convert(n);
-    return new Intl.NumberFormat(CURRENCY_RATES[currency].locale, {
-      style: 'currency', currency: CURRENCY_RATES[currency].code, maximumFractionDigits: 2,
-    }).format(converted);
-  };
+  const fmt = fmtMoney;
 
   const toggleSection = (s: string) => {
     const next = new Set(expandedSections);
@@ -118,17 +108,7 @@ const QSEstimate: React.FC = () => {
           <p className="text-gray-500 text-sm mt-1">{project.name} - {project.client}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Currency Toggle */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
-            {Object.keys(CURRENCY_RATES).map(c => (
-              <button key={c} onClick={() => setCurrency(c)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  currency === c ? 'bg-white text-angelina-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}>
-                {c}
-              </button>
-            ))}
-          </div>
+
           <button onClick={() => ExportService.exportExcel(project, rooms, items)}
             className="flex items-center gap-1.5 px-3 py-2 bg-angelina-600 text-white rounded-lg text-sm font-medium hover:bg-angelina-700">
             <Download className="w-4 h-4" /> Export
