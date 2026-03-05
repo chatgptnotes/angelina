@@ -294,6 +294,8 @@ const ProjectView: React.FC = () => {
     { key: 'summary' as const, label: 'Summary' },
     { key: 'estimate' as const, label: 'QS Estimate' },
     { key: 'drawings' as const, label: 'Drawing Analysis' },
+    { key: 'bom' as const, label: 'Bill of Material' },
+    { key: 'sabi' as const, label: 'SABI Estimate' },
   ];
 
   return (
@@ -348,6 +350,8 @@ const ProjectView: React.FC = () => {
         {tabs.map(tab => (
           <button key={tab.key} onClick={() => {
             if (tab.key === 'estimate') { navigate(`/app/project/${id}/estimate`); return; }
+            if (tab.key === 'bom') { navigate(`/app/project/${id}/bom`); return; }
+            if (tab.key === 'sabi') { navigate(`/app/project/${id}/sabi`); return; }
             if (tab.key === 'drawings') { navigate(`/app/project/${id}/drawings`); return; }
             setActiveTab(tab.key);
           }}

@@ -31,6 +31,8 @@ import MaterialLibrary from './pages/MaterialLibrary';
 import ProfilePage from './pages/settings/ProfilePage';
 import TeamPage from './pages/settings/TeamPage';
 import BillingPage from './pages/settings/BillingPage';
+import BillOfMaterial from './pages/BillOfMaterial';
+import SABIEstimate from './pages/SABIEstimate';
 import ActivityPage from './pages/settings/ActivityPage';
 import NotificationsPage from './pages/settings/NotificationsPage';
 import HelpPage from './pages/help/HelpPage';
@@ -56,6 +58,8 @@ const App: React.FC = () => {
             <Route path="/app/project/:id/settings" element={<ProjectSettings />} />
             <Route path="/app/project/:id/qs-estimate" element={<QSEstimate />} />
             <Route path="/app/project/:id/drawing-analysis" element={<DrawingAnalysis />} />
+            <Route path="/app/project/:id/bom" element={<BillOfMaterial />} />
+            <Route path="/app/project/:id/sabi" element={<SABIEstimate />} />
             <Route path="/app/new" element={<NewProject />} />
             <Route path="/app/rates" element={<RatesPage />} />
             <Route path="/app/compare" element={<ComparePage />} />
