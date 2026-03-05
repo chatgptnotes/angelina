@@ -95,7 +95,7 @@ const Dashboard: React.FC = () => {
             <div className="text-xs text-angelina-200">Approved</div>
           </div>
           <div className="bg-white/10 backdrop-blur rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">₹{(projects.reduce((s, p) => s + (p.total_estimate || 0), 0) / 100000).toFixed(1)}L</div>
+            <div className="text-2xl font-bold">{fmtMoney(projects.reduce((s, p) => s + (p.total_estimate || 0), 0))}</div>
             <div className="text-xs text-angelina-200">Total Value</div>
           </div>
         </div>
@@ -221,7 +221,7 @@ const Dashboard: React.FC = () => {
                 <div className="flex items-center justify-between text-xs text-gray-400">
                   <div className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(project.updated_at).toLocaleDateString()}</div>
                   {project.total_estimate && (
-                    <div className="flex items-center gap-1 font-medium text-gray-600"><DollarSign className="w-3 h-3" />₹{(project.total_estimate / 100000).toFixed(2)}L</div>
+                    <div className="flex items-center gap-1 font-medium text-gray-600"><DollarSign className="w-3 h-3" />{fmtMoney(project.total_estimate)}</div>
                   )}
                   <ArrowRight className="w-3 h-3 group-hover:text-angelina-600 transition-colors" />
                 </div>
