@@ -29,15 +29,20 @@ interface Props {
   onItemsAdded: () => void;
 }
 
-const SYSTEM_PROMPT = `You are a professional Quantity Surveyor (QS) assistant for the Cre8 BOQ platform.
-Help the user with their active BOQ project:
-1. Add missing items they describe verbally
-2. Suggest items for specific rooms/areas
-3. Review rates and flag if above/below market
-4. Suggest material specifications
-5. Calculate quantities from measurements
-6. Convert units (sqft to sqm, rft, etc.)
-7. Identify commonly missed items for room types
+const SYSTEM_PROMPT = `You are a proactive professional Quantity Surveyor (QS) assistant for the Cre8 BOQ platform.
+
+PROACTIVE BEHAVIOR (critical):
+- Don't wait for the user to ask. Analyze the project context and IMMEDIATELY flag:
+  1. Missing item categories (e.g. "I see no MEP items — typical projects include electrical, plumbing, HVAC")
+  2. BOQ assumptions you are making (e.g. "Assuming standard UAE finishes. Is this luxury or budget tier?")
+  3. Gaps in room coverage (e.g. "You have Living Room but no Bathrooms — shall I add typical bathroom items?")
+  4. Rate anomalies (e.g. "Your marble rate of 50/sqft seems low — typical is 120-180/sqft")
+  5. Missing preliminary items (Mobilization, Site Protection, Cleaning, etc.)
+  6. Commonly forgotten items for the room type
+
+- Ask clarifying questions to refine: finishing grade (basic/standard/luxury/ultra-luxury), location (UAE/India/KSA), client type (residential/commercial/hospitality)
+- State your assumptions explicitly: "I am assuming standard residential grade. Tell me if different."
+- After every analysis, end with: "Shall I add these to your project?"
 
 Valid categories: civil, flooring, wall_finish, ceiling, furniture, fixtures, electrical, plumbing, doors_windows, kitchen, decorative, hvac, fire_fighting, low_current, drainage, external_works, preliminaries, miscellaneous
 Valid units: sqft, sqm, rft, nos, set, lot, kg, ltr, cum, bag, mtr
@@ -46,20 +51,71 @@ When suggesting BOQ items to add, ALWAYS include this JSON block at the end:
 \`\`\`json
 {"items":[{"room_name":"Reception","category":"flooring","description":"Porcelain tiles 800x800mm polished","specification":"Rectified anti-slip R10 Grade A","unit":"sqm","quantity":46,"rate":250}]}
 \`\`\`
-If no items to add, omit the JSON block. Keep responses concise and practical.`;
+If no items to add, omit the JSON block. Be direct and specific — not generic.`;
 
 export default function BOQChatbot({ project, rooms, items, onItemsAdded }: Props) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([{
     id: '1', role: 'assistant', timestamp: new Date(),
-    content: `Hi! I am your QS assistant for **${project.name}**. I can help you add missing items, suggest specifications, review rates, or calculate quantities. What do you need?`,
+    content: `Analyzing your project...`,
   }]);
+  const [initialized, setInitialized] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [addingItems, setAddingItems] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Proactive analysis when chat opens for first time
+  useEffect(() => {
+    if (open && !initialized) {
+      setInitialized(true);
+      triggerProactiveAnalysis();
+    }
+  }, [open]);
+
+  const triggerProactiveAnalysis = async () => {
+    const apiKey = import.meta.env.VITE_AI_API_KEY;
+    if (!apiKey) {
+      setMessages([{
+        id: '1', role: 'assistant', timestamp: new Date(),
+        content: `Hi! I am your QS assistant for **${project.name}**. I can help you add missing items, suggest specifications, review rates, or calculate quantities. (AI API key not configured yet.)`,
+      }]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: import.meta.env.VITE_AI_MODEL || 'claude-sonnet-4-20250514',
+          max_tokens: 1024,
+          system: `${SYSTEM_PROMPT}\n\nContext:\n${buildContext()}`,
+          messages: [{
+            role: 'user',
+            content: 'Analyze my current BOQ project. Tell me what is missing, what assumptions you are making, and what I should add next. Be specific and proactive.',
+          }],
+        }),
+      });
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const data = await res.json();
+      const content = data.content[0]?.text || '';
+      const suggestedItems = parseItems(content);
+      const display = content.replace(/\`\`\`json[\s\S]*?\`\`\`/g, '').trim();
+      setMessages([{ id: '1', role: 'assistant', content: display, suggestedItems, timestamp: new Date() }]);
+    } catch (err: any) {
+      setMessages([{ id: '1', role: 'assistant', timestamp: new Date(), content: `Hi! I am your QS assistant for **${project.name}**. Ask me anything about your BOQ.` }]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const buildContext = () => {
     const roomSummary = rooms.map(r => {
