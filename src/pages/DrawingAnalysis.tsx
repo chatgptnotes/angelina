@@ -6,6 +6,7 @@ import {
   FileText, Layers, Maximize2, Image, Ruler
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import supabase from '../services/supabase';
 
 interface DrawingFile {
   id: string;
@@ -37,22 +38,66 @@ const DrawingAnalysis: React.FC = () => {
   const [selectedDrawing, setSelectedDrawing] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newDrawings: DrawingFile[] = acceptedFiles.map(file => ({
-      id: crypto.randomUUID(),
-      file,
-      preview: URL.createObjectURL(file),
-      type: file.type.includes('pdf') ? 'floor_plan' : 'other',
-      name: file.name,
-      analyzing: false,
-      results: null,
-    }));
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const uploadToast = toast.loading(`Uploading ${acceptedFiles.length} drawing(s)...`);
+    const newDrawings: DrawingFile[] = [];
+
+    for (const file of acceptedFiles) {
+      const drawingId = crypto.randomUUID();
+      const localPreview = URL.createObjectURL(file);
+      const drawingType = file.type.includes('pdf') ? 'floor_plan' as const : 'other' as const;
+
+      // Add locally first for instant feedback
+      const localDrawing: DrawingFile = {
+        id: drawingId,
+        file,
+        preview: localPreview,
+        type: drawingType,
+        name: file.name,
+        analyzing: false,
+        results: null,
+      };
+      newDrawings.push(localDrawing);
+
+      try {
+        // Upload to Supabase Storage
+        const filePath = `${id}/drawings/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('boq-documents')
+          .upload(filePath, file, { contentType: file.type });
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('boq-documents')
+          .getPublicUrl(filePath);
+
+        // Save record to boq_documents table
+        await supabase.from('boq_documents').insert({
+          project_id: id,
+          filename: file.name,
+          file_url: urlData.publicUrl,
+          file_type: drawingType,
+          file_size: file.size,
+          processing_status: 'pending',
+        });
+
+        // Update preview to use Supabase URL
+        localDrawing.preview = urlData.publicUrl;
+      } catch (err) {
+        console.error('Upload failed for', file.name, err);
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+
     setDrawings(prev => [...prev, ...newDrawings]);
     if (newDrawings.length > 0 && !selectedDrawing) {
       setSelectedDrawing(newDrawings[0].id);
     }
-    toast.success(`${acceptedFiles.length} drawing(s) uploaded`);
-  }, [selectedDrawing]);
+    toast.dismiss(uploadToast);
+    toast.success(`${acceptedFiles.length} drawing(s) uploaded and saved`);
+  }, [id, selectedDrawing]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
