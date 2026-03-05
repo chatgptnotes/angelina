@@ -1,3 +1,4 @@
+import { fmtMoney } from '../utils/format';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, FileText, Clock, DollarSign, Sparkles, ArrowRight, Building2, Search } from 'lucide-react';
@@ -62,7 +63,7 @@ const Dashboard: React.FC = () => {
 
   const recentProjects = [...projects].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 5);
 
-  const fmtCurrency = (n: number) => `₹${(n / 100000).toFixed(1)}L`;
+  const fmtCurrency = fmtMoney;
 
   return (
     <div>
