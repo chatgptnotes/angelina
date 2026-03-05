@@ -5,7 +5,7 @@ import {
   Upload, Sparkles, Download, FileText, Trash2, Plus,
   ChevronDown, ChevronUp, Settings, Copy,
   Share2, Eye, EyeOff, Edit3, Save, X, RefreshCw,
-  Calculator, Layers
+  Calculator, Layers, ZoomIn, ExternalLink
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { BOQService } from '../services/boqService';
@@ -48,6 +48,7 @@ const ProjectView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [extracting, setExtracting] = useState(false);
   const [activeTab, setActiveTab] = useState<'boq' | 'documents' | 'summary' | 'estimate' | 'drawings'>('boq');
+  const [previewDoc, setPreviewDoc] = useState<BOQDocument | null>(null);
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
   const [totals, setTotals] = useState<any>(null);
   // Item editing
@@ -631,21 +632,141 @@ const ProjectView: React.FC = () => {
             <p className="font-medium text-gray-700">{isDragActive ? 'Drop files here...' : 'Drag & drop design documents, or click to browse'}</p>
             <p className="text-sm text-gray-400 mt-1">PDF floor plans, 3D renders (JPG/PNG), material sheets</p>
           </div>
-          {documents.map(doc => (
-            <div key={doc.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FileText className="w-8 h-8 text-gray-400" />
-                <div>
-                  <div className="font-medium text-gray-900">{doc.filename}</div>
-                  <div className="text-xs text-gray-500">{doc.file_type} - {(doc.file_size / 1024).toFixed(0)} KB</div>
-                </div>
-              </div>
-              <button onClick={() => handleExtract(doc)} disabled={extracting}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-angelina-600 text-white rounded-lg text-sm font-medium hover:bg-angelina-700 disabled:opacity-50">
-                <Sparkles className="w-3.5 h-3.5" /> {extracting ? 'Extracting...' : 'Extract BOQ'}
-              </button>
+
+          {/* Document Grid */}
+          {documents.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {documents.map(doc => {
+                const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(doc.filename);
+                const isPdf = /\.pdf$/i.test(doc.filename) || ['2d_pdf','floor_plan','elevation'].includes(doc.file_type);
+                return (
+                  <div key={doc.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden group hover:shadow-md transition-shadow">
+                    {/* Preview Area */}
+                    <div
+                      className="relative bg-gray-50 cursor-pointer"
+                      style={{ height: '160px' }}
+                      onClick={() => setPreviewDoc(doc)}
+                    >
+                      {isImage ? (
+                        <img
+                          src={doc.file_url}
+                          alt={doc.filename}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ) : isPdf ? (
+                        <iframe
+                          src={`${doc.file_url}#toolbar=0&navpanes=0&scrollbar=0`}
+                          className="w-full h-full pointer-events-none"
+                          title={doc.filename}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <FileText className="w-12 h-12 text-gray-300" />
+                        </div>
+                      )}
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <ZoomIn className="w-8 h-8 text-white" />
+                      </div>
+                    </div>
+                    {/* Info + Actions */}
+                    <div className="p-3">
+                      <p className="text-xs font-medium text-gray-900 truncate mb-1" title={doc.filename}>{doc.filename}</p>
+                      <p className="text-xs text-gray-400 mb-2">{(doc.file_size / 1024).toFixed(0)} KB</p>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => handleExtract(doc)}
+                          disabled={extracting}
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-angelina-600 text-white rounded text-xs font-medium hover:bg-angelina-700 disabled:opacity-50"
+                        >
+                          <Sparkles className="w-3 h-3" /> {extracting ? '...' : 'Extract BOQ'}
+                        </button>
+                        <a
+                          href={doc.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 border border-gray-200 rounded text-gray-500 hover:bg-gray-50"
+                          title="Open in new tab"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          )}
+
+          {documents.length === 0 && (
+            <div className="text-center py-8 text-gray-400 text-sm">No documents uploaded yet.</div>
+          )}
+        </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{ maxWidth: '90vw', maxHeight: '90vh', width: '900px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+              <div>
+                <p className="font-semibold text-gray-900">{previewDoc.filename}</p>
+                <p className="text-xs text-gray-400">{(previewDoc.file_size / 1024).toFixed(0)} KB</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewDoc.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
+                >
+                  <ExternalLink className="w-4 h-4" /> Open
+                </a>
+                <button
+                  onClick={() => handleExtract(previewDoc)}
+                  disabled={extracting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-angelina-600 text-white rounded-lg hover:bg-angelina-700 disabled:opacity-50"
+                >
+                  <Sparkles className="w-4 h-4" /> {extracting ? 'Extracting...' : 'Extract BOQ'}
+                </button>
+                <button onClick={() => setPreviewDoc(null)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            {/* Preview Content */}
+            <div className="flex-1 overflow-auto bg-gray-100 flex items-center justify-center" style={{ minHeight: '500px' }}>
+              {/\.(jpg|jpeg|png|webp|gif)$/i.test(previewDoc.filename) ? (
+                <img
+                  src={previewDoc.file_url}
+                  alt={previewDoc.filename}
+                  className="max-w-full max-h-full object-contain rounded"
+                />
+              ) : (/\.pdf$/i.test(previewDoc.filename) || ['2d_pdf','floor_plan','elevation'].includes(previewDoc.file_type)) ? (
+                <iframe
+                  src={previewDoc.file_url}
+                  className="w-full rounded"
+                  style={{ height: '70vh' }}
+                  title={previewDoc.filename}
+                />
+              ) : (
+                <div className="text-center text-gray-500">
+                  <FileText className="w-16 h-16 mx-auto mb-3 text-gray-300" />
+                  <p>Preview not available</p>
+                  <a href={previewDoc.file_url} target="_blank" rel="noopener noreferrer" className="text-angelina-600 underline mt-2 block">Download file</a>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
