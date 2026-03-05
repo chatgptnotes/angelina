@@ -158,7 +158,7 @@ export class ExportService {
       @media print { body { padding: 20px; } .no-print { display: none; } }
     </style></head><body>
     <div class="header">
-      <h1>Angelina BOQ</h1>
+      <h1>Cre8</h1>
       <p>Bill of Quantities Report</p>
     </div>
     <div class="info-grid">

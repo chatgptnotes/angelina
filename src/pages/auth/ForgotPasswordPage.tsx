@@ -31,7 +31,7 @@ const ForgotPasswordPage: React.FC = () => {
             <div className="w-12 h-12 bg-gradient-to-br from-angelina-500 to-angelina-700 rounded-xl flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">Angelina BOQ</span>
+            <span className="text-2xl font-bold text-gray-900">Cre8</span>
           </Link>
         </div>
 

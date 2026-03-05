@@ -13,7 +13,7 @@ const LandingPage: React.FC = () => {
             <div className="w-10 h-10 bg-gradient-to-br from-angelina-500 to-angelina-700 rounded-xl flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">Angelina BOQ</span>
+            <span className="text-xl font-bold text-gray-900">Cre8</span>
           </Link>
           <div className="flex items-center gap-4">
             <a href="#features" className="text-sm text-gray-600 hover:text-gray-900 hidden sm:block">Features</a>
@@ -212,7 +212,7 @@ const LandingPage: React.FC = () => {
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-16">Trusted by design professionals</h2>
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { name: 'Priya Sharma', role: 'Interior Designer, Mumbai', text: 'Angelina BOQ has cut my estimation time by 80%. The AI extraction is incredibly accurate.' },
+              { name: 'Priya Sharma', role: 'Interior Designer, Mumbai', text: 'Cre8 has cut my estimation time by 80%. The AI extraction is incredibly accurate.' },
               { name: 'Rajesh Kumar', role: 'Contractor, Delhi', text: 'Finally a BOQ tool that understands Indian materials and rates. The export feature is fantastic.' },
               { name: 'Anita Desai', role: 'Architect, Bangalore', text: 'The team collaboration features make it easy to work with clients and subcontractors.' },
             ].map((t, i) => (
@@ -252,7 +252,7 @@ const LandingPage: React.FC = () => {
       <section className="py-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to streamline your BOQ process?</h2>
-          <p className="text-lg text-gray-500 mb-8">Join thousands of design professionals using Angelina BOQ.</p>
+          <p className="text-lg text-gray-500 mb-8">Join thousands of design professionals using Cre8.</p>
           <Link to="/signup" className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-angelina-500 to-angelina-700 text-white text-lg font-medium rounded-xl hover:from-angelina-600 hover:to-angelina-800 transition-all shadow-lg shadow-angelina-500/25">
             Get Started Free <ArrowRight className="w-5 h-5" />
           </Link>
@@ -266,9 +266,9 @@ const LandingPage: React.FC = () => {
             <div className="w-8 h-8 bg-gradient-to-br from-angelina-500 to-angelina-700 rounded-lg flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-gray-900">Angelina BOQ</span>
+            <span className="font-semibold text-gray-900">Cre8</span>
           </div>
-          <p className="text-sm text-gray-500">© 2024 Angelina BOQ. All rights reserved.</p>
+          <p className="text-sm text-gray-500">© 2024 Cre8. All rights reserved.</p>
         </div>
       </footer>
     </div>
