@@ -48,8 +48,8 @@ const Layout: React.FC = () => {
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-lg font-bold text-gray-900">Angelina</h1>
-                <p className="text-xs text-gray-500">AI Quantity Surveyor</p>
+                <h1 className="text-lg font-bold text-gray-900">Cre8</h1>
+                <p className="text-xs text-gray-500">AI-Powered BOQ Platform</p>
               </div>
             </Link>
 
