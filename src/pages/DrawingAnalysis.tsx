@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import supabase from '../services/supabase';
+import { AIExtractor } from '../services/aiExtractor';
 
 interface DrawingFile {
   id: string;
@@ -108,44 +109,88 @@ const DrawingAnalysis: React.FC = () => {
   });
 
   const analyzeDrawing = async (drawingId: string) => {
+    const drawing = drawings.find(d => d.id === drawingId);
+    if (!drawing) return;
+
     setDrawings(prev => prev.map(d =>
       d.id === drawingId ? { ...d, analyzing: true } : d
     ));
 
-    // Simulate analysis (in production, this would call the AI API)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const apiKey = import.meta.env.VITE_AI_API_KEY;
+    if (!apiKey) {
+      toast.error('AI API key not configured');
+      setDrawings(prev => prev.map(d => d.id === drawingId ? { ...d, analyzing: false } : d));
+      return;
+    }
 
-    const demoResults: AnalysisResult = {
-      areas: [
-        { name: 'Reception', area_sqft: 450, type: 'living' },
-        { name: 'Open Office', area_sqft: 1200, type: 'office' },
-        { name: 'Meeting Room 1', area_sqft: 200, type: 'office' },
-        { name: 'Meeting Room 2', area_sqft: 180, type: 'office' },
-        { name: 'Pantry', area_sqft: 120, type: 'kitchen' },
-        { name: 'Server Room', area_sqft: 80, type: 'other' },
-        { name: 'Corridor', area_sqft: 250, type: 'corridor' },
-      ],
-      measurements: [
-        { description: 'Total floor area', value: '2,480', unit: 'sqft' },
-        { description: 'Perimeter walls', value: '320', unit: 'rft' },
-        { description: 'Partition walls', value: '180', unit: 'rft' },
-        { description: 'Door openings', value: '12', unit: 'nos' },
-        { description: 'Window openings', value: '8', unit: 'nos' },
-        { description: 'Ceiling height', value: '3.2', unit: 'm' },
-      ],
-      notes: [
-        'Drawing scale: 1:100',
-        'North orientation detected from compass indicator',
-        'MEP services zones identified near core area',
-        'Fire escape routes comply with Dubai Civil Defense requirements',
-        'Accessibility provisions per UAE accessibility code',
-      ],
-    };
+    try {
+      // Convert file to base64
+      const toBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
 
-    setDrawings(prev => prev.map(d =>
-      d.id === drawingId ? { ...d, analyzing: false, results: demoResults } : d
-    ));
-    toast.success('Drawing analysis complete');
+      const base64 = await toBase64(drawing.file);
+      const mediaType = drawing.file.type || 'image/jpeg';
+      const isPdf = drawing.file.type === 'application/pdf';
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: import.meta.env.VITE_AI_MODEL || 'claude-sonnet-4-20250514',
+          max_tokens: 2048,
+          messages: [{
+            role: 'user',
+            content: [
+              ...(isPdf ? [] : [{
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: base64 },
+              }]),
+              {
+                type: 'text',
+                text: `Analyze this ${isPdf ? 'PDF drawing' : 'architectural drawing/image'} and extract:
+1. All rooms/areas with estimated area in sqft
+2. Key measurements (total area, perimeter, partition walls, door openings, window openings, ceiling height)
+3. Important notes about scale, orientation, materials, compliance
+
+Respond ONLY with valid JSON:
+{
+  "areas": [{"name": "Room Name", "area_sqft": 450, "type": "living|office|bedroom|bathroom|kitchen|corridor|other"}],
+  "measurements": [{"description": "Total floor area", "value": "2480", "unit": "sqft"}],
+  "notes": ["Note 1", "Note 2"]
+}`
+              }
+            ],
+          }],
+        }),
+      });
+
+      if (!response.ok) throw new Error(`AI API error: ${response.status}`);
+      const data = await response.json();
+      const text = data.content[0]?.text || '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      let results: AnalysisResult = { areas: [], measurements: [], notes: [] };
+      if (jsonMatch) {
+        try { results = JSON.parse(jsonMatch[0]); } catch {}
+      }
+
+      setDrawings(prev => prev.map(d =>
+        d.id === drawingId ? { ...d, analyzing: false, results } : d
+      ));
+      toast.success('Drawing analysis complete');
+    } catch (err: any) {
+      toast.error('Analysis failed: ' + err.message);
+      setDrawings(prev => prev.map(d => d.id === drawingId ? { ...d, analyzing: false } : d));
+    }
   };
 
   const setDrawingType = (drawingId: string, type: DrawingFile['type']) => {

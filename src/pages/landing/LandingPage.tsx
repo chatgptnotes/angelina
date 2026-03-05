@@ -66,7 +66,7 @@ const LandingPage: React.FC = () => {
                   <div className="text-xs text-gray-400">Client: Sharma Residence • Modern • 1,800 sqft</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-gray-900">₹24,85,000</div>
+                  <div className="text-2xl font-bold text-gray-900">24.85M</div>
                   <div className="text-xs text-gray-400">Total Estimate</div>
                 </div>
               </div>
@@ -94,7 +94,7 @@ const LandingPage: React.FC = () => {
                     <span className="text-sm font-semibold text-gray-900">Living Room</span>
                     <span className="text-xs text-gray-400">14 items • 350 sqft</span>
                   </div>
-                  <span className="text-sm font-bold text-gray-900">₹6,42,800</span>
+                  <span className="text-sm font-bold text-gray-900">6.43M</span>
                 </div>
                 <table className="w-full text-xs">
                   <thead className="bg-gray-50/50">
@@ -108,11 +108,11 @@ const LandingPage: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {[
-                      { cat: 'Flooring', catColor: 'bg-amber-100 text-amber-700', desc: 'Italian Marble — Botticino', spec: '20mm polished, anti-skid', qty: '350 sqft', rate: '₹380', amt: '₹1,33,000', conf: '90%' },
-                      { cat: 'Wall Finish', catColor: 'bg-purple-100 text-purple-700', desc: 'Asian Paints Royale Luxury', spec: 'Matte finish, 2 coats + primer', qty: '840 sqft', rate: '₹45', amt: '₹37,800', conf: '85%' },
-                      { cat: 'Ceiling', catColor: 'bg-blue-100 text-blue-700', desc: 'Gypsum false ceiling with cove', spec: '12.5mm board, L-box cove', qty: '350 sqft', rate: '₹120', amt: '₹42,000', conf: '88%' },
-                      { cat: 'Furniture', catColor: 'bg-green-100 text-green-700', desc: 'TV unit with storage', spec: 'Marine plywood, laminate, 8ft', qty: '1 nos', rate: '₹65,000', amt: '₹65,000', conf: '70%' },
-                      { cat: 'Electrical', catColor: 'bg-yellow-100 text-yellow-700', desc: 'LED recessed downlights 12W', spec: 'Philips, warm white 3000K', qty: '16 nos', rate: '₹850', amt: '₹13,600', conf: '80%' },
+                      { cat: 'Flooring', catColor: 'bg-amber-100 text-amber-700', desc: 'Italian Marble — Botticino', spec: '20mm polished, anti-skid', qty: '350 sqft', rate: '380', amt: '133K', conf: '90%' },
+                      { cat: 'Wall Finish', catColor: 'bg-purple-100 text-purple-700', desc: 'Asian Paints Royale Luxury', spec: 'Matte finish, 2 coats + primer', qty: '840 sqft', rate: '45', amt: '37.8K', conf: '85%' },
+                      { cat: 'Ceiling', catColor: 'bg-blue-100 text-blue-700', desc: 'Gypsum false ceiling with cove', spec: '12.5mm board, L-box cove', qty: '350 sqft', rate: '120', amt: '42K', conf: '88%' },
+                      { cat: 'Furniture', catColor: 'bg-green-100 text-green-700', desc: 'TV unit with storage', spec: 'Marine plywood, laminate, 8ft', qty: '1 nos', rate: '65K', amt: '65K', conf: '70%' },
+                      { cat: 'Electrical', catColor: 'bg-yellow-100 text-yellow-700', desc: 'LED recessed downlights 12W', spec: 'Philips, warm white 3000K', qty: '16 nos', rate: '850', amt: '13.6K', conf: '80%' },
                     ].map((r, i) => (
                       <tr key={i} className="hover:bg-gray-50/50">
                         <td className="px-4 py-2"><span className={`${r.catColor} text-[10px] px-1.5 py-0.5 rounded-full font-medium`}>{r.cat}</span></td>

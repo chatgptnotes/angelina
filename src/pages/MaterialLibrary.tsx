@@ -81,7 +81,7 @@ const MaterialLibrary: React.FC = () => {
     });
   };
 
-  const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+  const fmt = (n: number) => { return n >= 1000000 ? (n/1000000).toFixed(2)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : String(Math.round(n)); };
 
   return (
     <div>

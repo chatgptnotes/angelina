@@ -35,8 +35,8 @@ const ComparePage: React.FC = () => {
     setSelected(selected.filter(s => s !== id));
   };
 
-  const fmt = (n: number) => `₹${Math.round(n / 1000)}K`;
-  const fmtFull = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+  const fmt = (n: number) => { const v = Math.round(n); return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : (v/1000).toFixed(1)+'K'; };
+  const fmtFull = (n: number) => { const v = Math.round(n); return v >= 1000000 ? (v/1000000).toFixed(2)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : String(v); };
 
   // Build comparison data
   const categories = Object.keys(CATEGORY_LABELS);

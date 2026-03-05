@@ -192,7 +192,7 @@ const SABIEstimate = () => {
                   <div>
                     <div className={`text-sm font-medium ${active ? 'text-angelina-700' : 'text-gray-700'}`}>{svc.label}</div>
                     <div className="text-xs text-gray-400 mt-0.5">
-                      {active ? `AED ${getServiceTotal(svc.key).toLocaleString()}` : svc.description}
+                      {active ? `${getServiceTotal(svc.key).toLocaleString()}` : svc.description}
                     </div>
                   </div>
                 </button>
@@ -207,7 +207,7 @@ const SABIEstimate = () => {
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">{svc.label}</h3>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-angelina-700">AED {getServiceTotal(svc.key).toLocaleString()}</span>
+                <span className="text-sm font-bold text-angelina-700">{getServiceTotal(svc.key).toLocaleString()}</span>
                 <button onClick={() => addItem(svc.key)}
                   className="flex items-center gap-1 text-xs text-angelina-600 hover:text-angelina-700 border border-angelina-300 px-2 py-1 rounded">
                   <Plus className="w-3 h-3"/> Add
@@ -218,7 +218,7 @@ const SABIEstimate = () => {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['Description','Unit','Qty','Rate (AED)','Amount (AED)',''].map(h => (
+                    {['Description','Unit','Qty','Rate','Amount',''].map(h => (
                       <th key={h} className="text-left py-2 px-3 text-xs font-medium text-gray-500">{h}</th>
                     ))}
                   </tr>
@@ -274,7 +274,7 @@ const SABIEstimate = () => {
             ].map(({ label, value, sub, color }) => (
               <div key={label} className={`${color} border rounded-lg p-4 text-center`}>
                 <div className="text-xs text-gray-500 mb-1">{label}</div>
-                <div className="text-xl font-bold text-gray-900">AED {value.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+                <div className="text-xl font-bold text-gray-900">{value.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
                 <div className="text-xs text-gray-400 mt-1">{sub}</div>
               </div>
             ))}
@@ -325,8 +325,8 @@ const SABIEstimate = () => {
                     <th className="text-left py-2 px-3 font-medium text-gray-600">Description</th>
                     <th className="text-center py-2 px-3 font-medium text-gray-600 w-14">Unit</th>
                     <th className="text-right py-2 px-3 font-medium text-gray-600 w-14">Qty</th>
-                    <th className="text-right py-2 px-3 font-medium text-gray-600 w-24">Rate (AED)</th>
-                    <th className="text-right py-2 px-3 font-medium text-gray-600 w-24">Amount (AED)</th>
+                    <th className="text-right py-2 px-3 font-medium text-gray-600 w-24">Rate</th>
+                    <th className="text-right py-2 px-3 font-medium text-gray-600 w-24">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -342,7 +342,7 @@ const SABIEstimate = () => {
                   ))}
                   <tr className="bg-gray-50 border-t border-gray-200">
                     <td colSpan={5} className="py-2 px-3 text-xs font-bold text-gray-700">Section Total</td>
-                    <td className="py-2 px-3 text-right font-bold text-angelina-700">AED {getServiceTotal(svc.key).toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right font-bold text-angelina-700">{getServiceTotal(svc.key).toLocaleString()}</td>
                   </tr>
                 </tbody>
               </table>
@@ -352,11 +352,11 @@ const SABIEstimate = () => {
           {/* Grand Summary */}
           <table className="w-full text-sm mt-4 border rounded-lg overflow-hidden">
             <tbody>
-              <tr className="border-b"><td className="py-2 px-4 text-gray-600">Total Cost Price</td><td className="py-2 px-4 text-right">AED {costPrice.toLocaleString()}</td></tr>
-              <tr className="border-b"><td className="py-2 px-4 text-gray-600">Margin ({marginPct}%)</td><td className="py-2 px-4 text-right">AED {marginAmt.toLocaleString()}</td></tr>
+              <tr className="border-b"><td className="py-2 px-4 text-gray-600">Total Cost Price</td><td className="py-2 px-4 text-right">{costPrice.toLocaleString()}</td></tr>
+              <tr className="border-b"><td className="py-2 px-4 text-gray-600">Margin ({marginPct}%)</td><td className="py-2 px-4 text-right">{marginAmt.toLocaleString()}</td></tr>
               <tr className="bg-angelina-600 text-white">
                 <td className="py-3 px-4 font-bold text-base">TOTAL ESTIMATE (CLIENT PRICE)</td>
-                <td className="py-3 px-4 text-right font-bold text-xl">AED {clientPrice.toLocaleString(undefined,{minimumFractionDigits:0})}</td>
+                <td className="py-3 px-4 text-right font-bold text-xl">{clientPrice.toLocaleString(undefined,{minimumFractionDigits:0})}</td>
               </tr>
             </tbody>
           </table>

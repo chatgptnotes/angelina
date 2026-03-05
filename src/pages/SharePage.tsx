@@ -30,7 +30,7 @@ const SharePage: React.FC = () => {
     }).finally(() => setLoading(false));
   }, [id]);
 
-  const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+  const fmt = (n: number) => { const v = Math.round(n); return v >= 1000000 ? (v/1000000).toFixed(2)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : String(v); };
   const grandTotal = items.reduce((s, i) => s + (i.amount || 0), 0);
   const marginPct = (project as any)?.margin_percentage || 0;
   const clientTotal = grandTotal * (1 + marginPct / 100);

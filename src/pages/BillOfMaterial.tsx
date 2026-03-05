@@ -47,7 +47,7 @@ const BillOfMaterial = () => {
   }]);
 
   const exportCSV = () => {
-    const header = ['Sr','Description','Specification','Unit','Qty','Rate AED','Total AED','Category','Supplier','Lead Time'];
+    const header = ['Sr','Description','Specification','Unit','Qty','Rate','Total','Category','Supplier','Lead Time'];
     const dataRows = filteredRows.map((r, i) => [i+1, `"${r.description}"`, `"${r.specification}"`,
       r.unit, r.qty, r.rate_aed, r.total, CATEGORY_LABELS[r.category]||r.category, `"${r.supplier}"`, `"${r.lead_time}"`]);
     const csv = [header, ...dataRows].map(r => r.join(',')).join('\n');
@@ -101,7 +101,7 @@ const BillOfMaterial = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {['Sr','Description','Specification','Unit','Qty','Rate (AED)','Total (AED)','Supplier','Lead Time',''].map(h => (
+                {['Sr','Description','Specification','Unit','Qty','Rate','Total','Supplier','Lead Time',''].map(h => (
                   <th key={h} className="text-left py-3 px-3 text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -140,7 +140,7 @@ const BillOfMaterial = () => {
             <tfoot>
               <tr className="bg-gradient-to-r from-angelina-600 to-purple-600 text-white">
                 <td colSpan={6} className="py-3 px-3 font-bold text-sm">Total Material Cost</td>
-                <td className="py-3 px-3 text-right font-bold text-lg">AED {grandTotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                <td className="py-3 px-3 text-right font-bold text-lg">{grandTotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
                 <td colSpan={3}></td>
               </tr>
             </tfoot>

@@ -144,7 +144,7 @@ const RatesPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Database className="w-6 h-6 text-angelina-600" /> UAE Rate Database
           </h2>
-          <p className="text-gray-500 text-sm">UAE construction market rates in AED - {allRates.length} rates</p>
+          <p className="text-gray-500 text-sm">Construction market rates - {allRates.length} rates</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={importRates} className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg border border-gray-200">
@@ -193,7 +193,7 @@ const RatesPage: React.FC = () => {
               {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
             </select>
             <input type="number" value={newRate.rate_aed || ''} onChange={e => setNewRate({ ...newRate, rate_aed: +e.target.value })}
-              placeholder="Rate (AED)" className="px-3 py-2 border rounded-lg" />
+              placeholder="Rate" className="px-3 py-2 border rounded-lg" />
           </div>
           <div className="flex gap-2 mt-3">
             <button onClick={addRate} className="px-4 py-2 bg-angelina-600 text-white rounded-lg text-sm font-medium hover:bg-angelina-700">
@@ -213,7 +213,7 @@ const RatesPage: React.FC = () => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Item</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Unit</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Rate (AED)</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Rate</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 w-24">Actions</th>
             </tr>
           </thead>

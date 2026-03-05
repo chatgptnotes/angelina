@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Sparkles, ArrowRight, ArrowLeft, MapPin, Building2, Banknote, Ruler } from 'lucide-react';
+import { Sparkles, ArrowRight, ArrowLeft, MapPin, Building2, Ruler } from 'lucide-react';
 import { BOQService } from '../services/boqService';
 
 const UAE_CITIES = ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Umm Al Quwain', 'Fujairah'];
 const PROJECT_TYPES = ['Commercial', 'Residential', 'Government', 'Industrial', 'Healthcare', 'Education', 'Hospitality'];
-const CURRENCIES = ['AED', 'USD', 'INR'];
 const MEASUREMENT_STANDARDS = ['RICS/NRM', 'SMM7', 'CSI'];
 
 const NewProject: React.FC = () => {
@@ -19,7 +18,6 @@ const NewProject: React.FC = () => {
     style: 'Modern',
     total_area_sqft: '',
     num_rooms: '',
-    currency: 'AED',
     measurementStandard: 'RICS/NRM',
   });
   const [creating, setCreating] = useState(false);
@@ -41,7 +39,6 @@ const NewProject: React.FC = () => {
         total_area_sqft: form.total_area_sqft ? Number(form.total_area_sqft) : undefined,
         num_rooms: form.num_rooms ? Number(form.num_rooms) : undefined,
         status: 'draft',
-        currency: form.currency,
       });
       toast.success('Project created!');
       navigate(`/app/project/${project.id}`);
@@ -125,19 +122,6 @@ const NewProject: React.FC = () => {
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-angelina-500 focus:border-transparent"
             >
               {styles.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-              <Banknote className="w-3.5 h-3.5" /> Currency
-            </label>
-            <select
-              value={form.currency}
-              onChange={e => setForm({ ...form, currency: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-angelina-500 focus:border-transparent"
-            >
-              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
